@@ -6,7 +6,7 @@
  * Plugin URI:  https://thisismyurl.com/thisismyurl-webp-support/
  * Donate link: https://thisismyurl.com/donate/
  * Description: Non-destructive WebP conversion with backups, live categorization, and one-click restoration.
- * Version:     1.251229
+ * Version:     1.251230
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Update URI: https://github.com/thisismyurl/thisismyurl-webp-support
@@ -40,13 +40,16 @@ class TIMU_WEBP_Support {
      * Register the Media submenu page.
      */
     public static function add_admin_menu() {
-        add_management_page(
-            __( 'WebP Support', 'thisismyurl-webp-support' ),
-            __( 'WebP Support', 'thisismyurl-webp-support' ),
-            'manage_options',
-            'thisismyurl-webp-support',
-            array( __CLASS__, 'render_admin_page' )
-        );
+
+        if ( ! class_exists( 'TIMU_IC' ) ) {
+            add_management_page(
+                __( 'WebP Support', 'thisismyurl-webp-support' ),
+                __( 'WebP Support', 'thisismyurl-webp-support' ),
+                'manage_options',
+                'webp-optimizer',
+                array( __CLASS__, 'render_admin_page' )
+            );
+        }
     }
 
     public static function add_plugin_action_links( $links ) {
