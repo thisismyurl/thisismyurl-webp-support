@@ -12,35 +12,47 @@
  * Update URI: https://github.com/thisismyurl/thisismyurl-webp-support
  * GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-webp-support
  * Primary Branch: main
- * 
- * Text Domain: thisismyurl-svg-support
+ * * Text Domain: thisismyurl-svg-support
  * License:     GPL2
- * 
- * 
- * * * @package TIMU_WEBP_Support 
+ * * @package TIMU_WEBP_Support 
  */
 
+/**
+ * Prevent direct access to the file for security purposes.
+ */
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Class TIMU_WEBP_Support
+ * Handles image optimization, WebP conversion, and restoration logic.
+ */
 class TIMU_WEBP_Support {
 
     /**
      * Initialize the plugin hooks.
+     * Registers menu pages, AJAX handlers, and plugin action links.
      */
     public static function init() {
+        // Register the admin menu page.
         add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ) );
+        
+        // Handle bulk optimization via AJAX.
         add_action( 'wp_ajax_timu_wsbulk_optimize', array( __CLASS__, 'ajax_bulk_optimize' ) );
+        
+        // Handle single image restoration via AJAX.
         add_action( 'wp_ajax_timu_wsrestore_single', array( __CLASS__, 'ajax_restore_single' ) );
+        
+        // Add "Settings" and "Donate" links to the Plugins list.
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
-}
+    }
 
     /**
      * Register the Media submenu page.
+     * Suppresses the menu if the main Image Support (TIMU_IC) plugin is active.
      */
     public static function add_admin_menu() {
-
         if ( ! class_exists( 'TIMU_IC' ) ) {
             add_management_page(
                 __( 'WebP Support', 'thisismyurl-webp-support' ),
@@ -52,6 +64,12 @@ class TIMU_WEBP_Support {
         }
     }
 
+    /**
+     * Adds custom action links beneath the plugin name on the Plugins screen.
+     *
+     * @param array $links Existing action links.
+     * @return array Merged action links.
+     */
     public static function add_plugin_action_links( $links ) {
          $custom_links = array(
                 '<a href="' . admin_url( 'admin.php?page=webp-optimizer' ) . '">' . esc_html__( 'Settings', 'thisismyurl-webp-support' ) . '</a>',
@@ -62,6 +80,7 @@ class TIMU_WEBP_Support {
 
     /**
      * Core Engine: Initialize WordPress Filesystem.
+     * Ensures the global $wp_filesystem is available for secure file operations.
      */
     private static function init_fs() {
         global $wp_filesystem;
@@ -74,6 +93,9 @@ class TIMU_WEBP_Support {
 
     /**
      * Get lists of pending and managed media items.
+     * Queries all images and categorizes them by their WebP status.
+     *
+     * @return array Contains 'pending' and 'media' attachment arrays.
      */
     public static function get_media_lists() {
         $query = new WP_Query(
@@ -96,17 +118,20 @@ class TIMU_WEBP_Support {
                 $orig_path = get_post_meta( $post->ID, '_webp_original_path', true );
                 $is_webp   = ( 'image/webp' === $mime );
 
+                // Mark external WebP images that weren't created by this plugin.
                 if ( $is_webp && ! $orig_path ) {
                     update_post_meta( $post->ID, '_webp_original_path', 'external' );
                     $orig_path = 'external';
                 }
 
+                // Check for physical file existence.
                 if ( ! file_exists( $file ) ) {
                     $post->timu_wsstatus = 'missing';
                     $media[]             = $post;
                     continue;
                 }
 
+                // Categorize into Managed (WebP/Backed up) or Pending.
                 if ( $orig_path || $is_webp ) {
                     $media[] = $post;
                 } else {
@@ -122,6 +147,11 @@ class TIMU_WEBP_Support {
 
     /**
      * Convert an image to WebP and back up the original.
+     * Uses GD Library to generate the WebP file and moves original to backup directory.
+     *
+     * @param int $id The attachment ID.
+     * @param int $quality Compression quality (1-100).
+     * @return bool|WP_Error True on success, WP_Error on failure.
      */
     public static function convert_to_webp( $id, $quality = 80 ) {
         $fs         = self::init_fs();
@@ -139,6 +169,7 @@ class TIMU_WEBP_Support {
         $original_size = filesize( $full_path );
         $new_path      = preg_replace( '/\.(jpg|jpeg|png|gif|bmp)$/i', '.webp', $full_path );
 
+        // Create image resource based on mime type.
         switch ( $info['mime'] ) {
             case 'image/jpeg':
                 $image = imagecreatefromjpeg( $full_path );
@@ -165,9 +196,11 @@ class TIMU_WEBP_Support {
             return new WP_Error( 'gd', __( 'GD Library failed to process image.', 'thisismyurl-webp-support' ) );
         }
 
+        // Generate the WebP file.
         imagewebp( $image, $new_path, $quality );
         imagedestroy( $image );
 
+        // Backup original and update attachment metadata.
         $upload_dir  = wp_upload_dir();
         $rel_path    = get_post_meta( $id, '_wp_attached_file', true );
         $backup_dir  = $upload_dir['basedir'] . '/webp-backups/' . dirname( $rel_path );
@@ -188,6 +221,10 @@ class TIMU_WEBP_Support {
 
     /**
      * Restore original image from backup.
+     * Moves the original file back to the uploads folder and deletes the WebP version.
+     *
+     * @param int $id The attachment ID.
+     * @return bool True on success, false on failure.
      */
     public static function restore_image( $id ) {
         $fs           = self::init_fs();
@@ -208,8 +245,10 @@ class TIMU_WEBP_Support {
             $rel_path = get_post_meta( $id, '_wp_attached_file', true );
             $new_rel  = preg_replace( '/\.webp$/i', '.' . $extension, $rel_path );
             update_post_meta( $id, '_wp_attached_file', $new_rel );
+            
             $mimes = array( 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'bmp' => 'image/bmp' );
             $mime  = isset( $mimes[ strtolower( $extension ) ] ) ? $mimes[ strtolower( $extension ) ] : 'image/jpeg';
+            
             wp_update_post( array( 'ID' => $id, 'post_mime_type' => $mime ) );
             delete_post_meta( $id, '_webp_original_path' );
             delete_post_meta( $id, '_webp_savings' );
@@ -219,7 +258,8 @@ class TIMU_WEBP_Support {
     }
 
     /**
-     * AJAX Handlers
+     * AJAX: Bulk Optimize.
+     * Triggered by the progress bar to convert a single image during a batch.
      */
     public static function ajax_bulk_optimize() {
         check_ajax_referer( 'timu_wswebp_nonce', 'nonce' );
@@ -235,6 +275,10 @@ class TIMU_WEBP_Support {
         wp_send_json_error( is_wp_error( $result ) ? $result->get_error_message() : 'Unknown error' );
     }
 
+    /**
+     * AJAX: Restore Single.
+     * Triggered by the "Restore" button to revert a WebP image.
+     */
     public static function ajax_restore_single() {
         check_ajax_referer( 'timu_wswebp_nonce', 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized' ); }
@@ -245,7 +289,7 @@ class TIMU_WEBP_Support {
 
     /**
      * Render the Admin Dashboard.
-     * Updated to match the SVG Support styling and two-column layout.
+     * Displays optimization controls, progress bar, and media management tables.
      */
     public static function render_admin_page() {
         $lists       = self::get_media_lists();
@@ -385,13 +429,18 @@ class TIMU_WEBP_Support {
                             </div>
                         </div>
 
-                    </div> </div> </div> </div> <script type="text/javascript">
+                    </div> </div> </div> </div> 
+
+        <script type="text/javascript">
         jQuery(document).ready(function($) {
             const pendingIds = <?php echo wp_json_encode( $pending_ids ); ?>;
             const nonce = '<?php echo esc_js( wp_create_nonce( "timu_wswebp_nonce" ) ); ?>';
             let completed = 0;
             let isCancelled = false;
 
+            /**
+             * Handle individual image restoration.
+             */
             $(document).on('click', '.restore-btn', function() {
                 const $btn = $(this);
                 $btn.prop('disabled', true).text('...');
@@ -399,6 +448,9 @@ class TIMU_WEBP_Support {
                     .done(() => location.reload());
             });
 
+            /**
+             * Handle bulk restoration of all WebP images.
+             */
             $('#btn-restore-all').click(function() {
                 const ids = $(this).data('ids');
                 if(!confirm('<?php echo esc_js( __( "Restore all images? This cannot be undone.", "thisismyurl-webp-support" ) ); ?>')) return;
@@ -411,6 +463,9 @@ class TIMU_WEBP_Support {
                 processRestore();
             });
 
+            /**
+             * Start the bulk optimization batch.
+             */
             $('#btn-start').click(function() {
                 const $btn = $(this);
                 const total = pendingIds.length;
@@ -437,25 +492,34 @@ class TIMU_WEBP_Support {
                 processNext();
             });
 
+            /**
+             * Handle batch cancellation.
+             */
             $('#btn-cancel').click(() => { isCancelled = true; location.reload(); });
         });
         </script>
         <?php
     }
 }
-// 1. Initialize the core plugin logic
+
+/**
+ * Initialize the core plugin logic once the class is loaded.
+ */
 TIMU_WEBP_Support::init();
 
-
-
+/**
+ * Handle Plugin Updates via GitHub Integration.
+ * Loads the updater logic once all plugins have been loaded by WordPress.
+ */
 add_action( 'plugins_loaded', function() {
     $updater_path = plugin_dir_path( __FILE__ ) . 'updater.php';
     
+    // Check if the updater file exists before attempting to require it.
     if ( file_exists( $updater_path ) ) {
         require_once $updater_path;
     }
 
-    // Double-check the class name matches what is defined in your updater.php
+    // Initialize the FWO GitHub Updater if the class is available.
     if ( class_exists( 'FWO_GitHub_Updater' ) ) {
         new FWO_GitHub_Updater( array(
             'slug'               => 'thisismyurl-webp-support',
