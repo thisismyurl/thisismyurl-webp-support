@@ -45,6 +45,7 @@ class TIMU_WEBP_Support extends TIMU_Core_v1 {
 
     /**
      * Constructor: Initializes Core and WebP specific hooks.
+     * Updated to pass 'tools.php' as the 5th argument for proper routing.
      */
     public function __construct() {
         parent::__construct( 
@@ -52,38 +53,20 @@ class TIMU_WEBP_Support extends TIMU_Core_v1 {
             plugin_dir_url( __FILE__ ), 
             'timu_ws_settings_group', 
             '', 
-            'thisismyurl-webp-support' 
+            'tools.php' // Correctly routes Core action links to the Tools menu
         );
 
-        // AJAX Handlers
         add_action( 'wp_ajax_timu_wsbulk_optimize', array( $this, 'ajax_bulk_optimize' ) );
         add_action( 'wp_ajax_timu_wsrestore_single', array( $this, 'ajax_restore_single' ) );
-        
-        // Menu integration
         add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
     }
 
     /**
-     * Overrides the core action links to point to Tools instead of Settings.
+     * NOTE: The add_plugin_action_links() method has been REMOVED.
+     * The Core Library (v1.3.7) now handles this automatically, resolving 
+     * the undefined $text_domain property warning.
      */
-    public function add_plugin_action_links( $links ) {
-        $is_valid = $this->is_licensed();
-        // Point specifically to Tools page [cite: 10]
-        $settings_url = admin_url( 'tools.php?page=' . $this->plugin_slug );
-        $action_links[] = '<a href="' . esc_url( $settings_url ) . '">' . __( 'Settings', $this->text_domain ) . '</a>';
 
-        if ( $is_valid ) {
-            $action_links[] = '<a href="https://thisismyurl.com/support/" target="_blank" style="font-weight: bold; color: #46b450;">' . __( 'Support', $this->text_domain ) . '</a>';
-        } else {
-            $donate_url = 'https://thisismyurl.com/donate/?source=' . urlencode( $this->plugin_slug );
-            $action_links[] = '<a href="' . esc_url( $donate_url ) . '" target="_blank" style="font-weight: bold;">' . __( 'Donate', $this->text_domain ) . '</a>';
-        }
-        return array_merge( $action_links, $links );
-    }
-
-    /**
-     * Register the Media submenu page.
-     */
     public function add_admin_menu() {
         if ( ! class_exists( 'TIMU_IC' ) ) {
             add_management_page(
