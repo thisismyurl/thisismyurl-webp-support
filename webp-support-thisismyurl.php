@@ -9,7 +9,7 @@
  * Description:         Safely enable WEBP uploads and convert existing images to AVIF format.
  * Tags:                webp, uploads, media library, optimization
  * 
- * Version:             1.26010216
+ * Version:             1.26010217
  * Requires at least:   5.3
  * Requires PHP:        7.4
  * 
@@ -127,7 +127,7 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 					'enabled'       => array(
 						'type'      => 'switch',
 						'label'     => __( 'Enable WebP Support', 'webp-support-thisismyurl' ),
-						'desc'      => __( 'Allows .webp files to be uploaded to the Media Library.', 'webp-support-thisismyurl' ),
+						'desc'      => __( 'Allows .webp files  to be processed by this plugin.', 'webp-support-thisismyurl' ),
 						'is_parent' => true, // Triggers cascading visibility in shared-admin.js.
 						'default'   => 1,
 					),
