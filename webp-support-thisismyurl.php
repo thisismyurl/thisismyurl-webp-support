@@ -1,15 +1,29 @@
 <?php
 /**
- * TIMU WebP Support Plugin
- *
- * This plugin facilitates the secure upload and processing of WebP images within the 
- * WordPress Media Library. It integrates with the TIMU Shared Core to provide consistent 
- * settings management and cross-plugin format conversion.
- *
- * @package    TIMU_WebP_Support
- * @author     Christopher Ross <https://thisismyurl.com/>
- * @version    1.260102
- * @license    GPL-2.0+
+ * Author:              Christopher Ross
+ * Author URI:          https://thisismyurl.com/?source=webp-support-thisismyurl
+ * Plugin Name:         WebP Support by thisismyurl.com
+ * Plugin URI:          https://thisismyurl.com/webp-support-thisismyurl/?source=webp-support-thisismyurl
+ * Donate link:         https://thisismyurl.com/donate/?source=webp-support-thisismyurl
+ * 
+ * Description:         Safely enable WEBP uploads and convert existing images to AVIF format.
+ * Tags:                webp, uploads, media library, optimization
+ * 
+ * Version:             1.260101
+ * Requires at least:   5.3
+ * Requires PHP:        7.4
+ * 
+ * Update URI:          https://github.com/thisismyurl/webp-support-thisismyurl
+ * GitHub Plugin URI:   https://github.com/thisismyurl/webp-support-thisismyurl
+ * Primary Branch:      main
+ * Text Domain:         webp-support-thisismyurl
+ * 
+ * License:             GPL2
+ * License URI:         https://www.gnu.org/licenses/gpl-2.0.html
+ * 
+ * @package TIMU_AVIF_Support
+ * 
+ * 
  */
 
 /**
@@ -54,7 +68,9 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 			plugin_dir_url( __FILE__ ),       // Base URL for assets.
 			'timu_ws_settings_group',         // Settings registration group.
 			'',                               // Custom icon (optional).
-			'tools.php'                       // Admin menu parent location.
+			'tools.php',                       // Admin menu parent location.
+
+			
 		);
 
 		/**
@@ -77,6 +93,8 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 		 * Activation: Ensure default options exist in the database.
 		 */
 		register_activation_hook( __FILE__, array( $this, 'activate_plugin_defaults' ) );
+
+		add_action( 'timu_sidebar_under_banner', array( $this, 'render_default_sidebar_actions' ) );
 	}
 
 	/**
@@ -113,7 +131,7 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 						'is_parent' => true, // Triggers cascading visibility in shared-admin.js.
 						'default'   => 1,
 					),
-					'handling_mode' => array(
+					'target_format' => array(
 						'type'    => 'radio',
 						'label'   => __( 'WebP Handling Mode', 'webp-support-thisismyurl' ),
 						'parent'  => 'enabled', // Subordinate to the main enable switch.
@@ -123,14 +141,23 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 							? __( 'Choose how to handle image uploads.', 'webp-support-thisismyurl' )
 							: __( 'AVIF conversion requires the AVIF Support plugin.', 'webp-support-thisismyurl' ),
 					),
-					'quality'       => array(
-						'type'    => 'number',
-						'label'   => __( 'Compression Quality', 'webp-support-thisismyurl' ),
-						'desc'    => __( 'Set image quality from 1-100 (Default: 80).', 'webp-support-thisismyurl' ),
-						'parent'  => 'enabled',
-						'min'     => 1,
-						'max'     => 100,
-						'default' => 80,
+					'webp_quality'  => array(
+						'type'         => 'number',
+						'label'        => __( 'WebP Quality', 'svg-support-thisismyurl' ),
+						'default'      => 80,
+						'show_if' => array(
+							'field' => 'target_format', // Must match the ID of your radio buttons
+							'value' => 'webp'           // Must match the value 'webp' in the radio option
+						)
+					),
+					'avif_quality'  => array(
+						'type'         => 'number',
+						'label'        => __( 'AVIF Quality', 'svg-support-thisismyurl' ),
+						'default'      => 60,
+						'show_if' => array(
+							'field' => 'target_format', // Must match the ID of your radio buttons
+							'value' => 'avif'           // Must match the value 'webp' in the radio option
+						)
 					),
 				),
 			),
@@ -172,6 +199,9 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 			array( $this, 'render_settings_page' )
 		);
 	}
+
+
+
 
 	/**
 	 * MIME Type Support
