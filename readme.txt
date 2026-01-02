@@ -7,7 +7,7 @@ Support Link: https://thisismyurl.com/contact/
 Tags: webp, optimization, speed, image-optimizer, performances
 Requires at least: 5.0
 Tested up to: 6.9
-Stable tag: 1.260102
+Stable tag: 1.26010212
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-webp-support/
@@ -47,6 +47,18 @@ We recommend using the "Restore All" button in the dashboard before uninstallati
 Yes! The conversion engine specifically preserves alpha channels to ensure your logos and transparent graphics remain crisp and clear.
 
 == Changelog ==
+
+= 1.26010212 =
+* TIMU_Core updated to version 1.26010212
+
+= 1.26010212 =
+* TIMU_Core updated to version 1.26010212
+
+= 1.26010212 =
+* TIMU_Core updated to version 1.26010212
+
+= 1.26010212 =
+* TIMU_Core updated to version 1.26010212
 n
 = 1.260102 =
 * Updated core library to version 1.260102
