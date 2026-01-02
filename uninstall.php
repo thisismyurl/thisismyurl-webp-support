@@ -28,7 +28,7 @@ delete_transient( 'timu_tools_cache' );
 // 4. Plugin-Specific Cleanup
 global $wpdb;
 
-if ( 'thisismyurl-webp-support' === $plugin_slug ) {
+if ( 'webp-support-thisismyurl' === $plugin_slug ) {
     // Delete WebP specific post metadata for all attachments
     $wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_webp_original_path', '_webp_savings')" );
 }

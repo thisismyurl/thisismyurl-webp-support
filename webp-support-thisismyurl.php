@@ -50,7 +50,7 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 	 */
 	public function __construct() {
 		parent::__construct(
-			'thisismyurl-webp-support',      // Unique plugin slug.
+			'webp-support-thisismyurl',      // Unique plugin slug.
 			plugin_dir_url( __FILE__ ),       // Base URL for assets.
 			'timu_ws_settings_group',         // Settings registration group.
 			'',                               // Custom icon (optional).
@@ -95,38 +95,38 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 		 * Dynamically build radio options based on the plugin ecosystem.
 		 */
 		$handling_options = array(
-			'asis' => __( 'Upload as a .webp file', 'thisismyurl-webp-support' ),
+			'asis' => __( 'Upload as a .webp file', 'webp-support-thisismyurl' ),
 		);
 
 		if ( $avif_active ) {
-			$handling_options['avif'] = __( 'Convert uploads to .avif files.', 'thisismyurl-webp-support' );
+			$handling_options['avif'] = __( 'Convert uploads to .avif files.', 'webp-support-thisismyurl' );
 		}
 
 		$blueprint = array(
 			'config' => array(
-				'title'  => __( 'WebP Configuration', 'thisismyurl-webp-support' ),
+				'title'  => __( 'WebP Configuration', 'webp-support-thisismyurl' ),
 				'fields' => array(
 					'enabled'       => array(
 						'type'      => 'switch',
-						'label'     => __( 'Enable WebP Support', 'thisismyurl-webp-support' ),
-						'desc'      => __( 'Allows .webp files to be uploaded to the Media Library.', 'thisismyurl-webp-support' ),
+						'label'     => __( 'Enable WebP Support', 'webp-support-thisismyurl' ),
+						'desc'      => __( 'Allows .webp files to be uploaded to the Media Library.', 'webp-support-thisismyurl' ),
 						'is_parent' => true, // Triggers cascading visibility in shared-admin.js.
 						'default'   => 1,
 					),
 					'handling_mode' => array(
 						'type'    => 'radio',
-						'label'   => __( 'WebP Handling Mode', 'thisismyurl-webp-support' ),
+						'label'   => __( 'WebP Handling Mode', 'webp-support-thisismyurl' ),
 						'parent'  => 'enabled', // Subordinate to the main enable switch.
 						'options' => $handling_options,
 						'default' => 'asis',
 						'desc'    => $avif_active
-							? __( 'Choose how to handle image uploads.', 'thisismyurl-webp-support' )
-							: __( 'AVIF conversion requires the AVIF Support plugin.', 'thisismyurl-webp-support' ),
+							? __( 'Choose how to handle image uploads.', 'webp-support-thisismyurl' )
+							: __( 'AVIF conversion requires the AVIF Support plugin.', 'webp-support-thisismyurl' ),
 					),
 					'quality'       => array(
 						'type'    => 'number',
-						'label'   => __( 'Compression Quality', 'thisismyurl-webp-support' ),
-						'desc'    => __( 'Set image quality from 1-100 (Default: 80).', 'thisismyurl-webp-support' ),
+						'label'   => __( 'Compression Quality', 'webp-support-thisismyurl' ),
+						'desc'    => __( 'Set image quality from 1-100 (Default: 80).', 'webp-support-thisismyurl' ),
 						'parent'  => 'enabled',
 						'min'     => 1,
 						'max'     => 100,
@@ -165,8 +165,8 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 	 */
 	public function add_admin_menu() {
 		add_management_page(
-			__( 'WebP Support Settings', 'thisismyurl-webp-support' ),
-			__( 'WebP Support', 'thisismyurl-webp-support' ),
+			__( 'WebP Support Settings', 'webp-support-thisismyurl' ),
+			__( 'WebP Support', 'webp-support-thisismyurl' ),
 			'manage_options',
 			$this->plugin_slug,
 			array( $this, 'render_settings_page' )
