@@ -113,7 +113,7 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 		 * Dynamically build radio options based on the plugin ecosystem.
 		 */
 		$handling_options = array(
-			'asis' => __( 'Upload as a .webp file', 'webp-support-thisismyurl' ),
+			'webp' => __( 'Upload as a .webp file', 'webp-support-thisismyurl' ),
 		);
 
 		if ( $avif_active ) {
@@ -136,13 +136,16 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 						'label'   => __( 'WebP Handling Mode', 'webp-support-thisismyurl' ),
 						'parent'  => 'enabled', // Subordinate to the main enable switch.
 						'options' => $handling_options,
-						'default' => 'asis',
+						'default' => 'webp',
 						'desc'    => $avif_active
 							? __( 'Choose how to handle image uploads.', 'webp-support-thisismyurl' )
 							: __( 'AVIF conversion requires the AVIF Support plugin.', 'webp-support-thisismyurl' ),
 					),
 					'webp_quality'  => array(
-						'type'         => 'number',
+						'type'    => 'range', // Now a slider!
+						'default' => 80,
+						'min'     => 10,
+						'max'     => 100,
 						'label'        => __( 'WebP Quality', 'svg-support-thisismyurl' ),
 						'default'      => 80,
 						'show_if' => array(
@@ -151,9 +154,11 @@ class TIMU_WebP_Support extends TIMU_Core_v1 {
 						)
 					),
 					'avif_quality'  => array(
-						'type'         => 'number',
+						'type'    => 'range', // Now a slider!
+						'default' => 80,
+						'min'     => 10,
+						'max'     => 100,
 						'label'        => __( 'AVIF Quality', 'svg-support-thisismyurl' ),
-						'default'      => 60,
 						'show_if' => array(
 							'field' => 'target_format', // Must match the ID of your radio buttons
 							'value' => 'avif'           // Must match the value 'webp' in the radio option
