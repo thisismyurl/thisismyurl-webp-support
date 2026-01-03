@@ -37,4 +37,4 @@ No. The plugin optimizes the files you upload to ensure they are web-ready witho
 
 
 ---
-Â© 2026 [thisismyurl](https://thisismyurl.com)
+([char]0x00A9) 2026 [thisismyurl](https://thisismyurl.com)
