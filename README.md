@@ -34,7 +34,7 @@ Visit [https://thisismyurl.com/webp-support-thisismyurl/#register](https://thisi
 No. The plugin optimizes the files you upload to ensure they are web-ready without destroying your original source content.
 
 ## 🗺️ Roadmap & Activity
-
+https://github.com/thisismyurl/webp-support-thisismyurl/issues/2 https://github.com/thisismyurl/webp-support-thisismyurl/issues/3 https://github.com/thisismyurl/webp-support-thisismyurl/issues/4 https://github.com/thisismyurl/webp-support-thisismyurl/issues/5 https://github.com/thisismyurl/webp-support-thisismyurl/issues/6 https://github.com/thisismyurl/webp-support-thisismyurl/issues/7 https://github.com/thisismyurl/webp-support-thisismyurl/issues/8 https://github.com/thisismyurl/webp-support-thisismyurl/issues/9 
 
 ---
 ([char]0x00A9) 2026 [thisismyurl](https://thisismyurl.com)

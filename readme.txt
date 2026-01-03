@@ -1,4 +1,4 @@
-=== WebP Support by thisismyurl ===
+ï»¿=== WebP Support by thisismyurl ===
 Contributors: thisismyurl
 Author: thisismyurl
 Author URI: https://thisismyurl.com/
@@ -43,7 +43,7 @@ Unlike standard WebP plugins, this tool is "ecosystem aware." If you are also us
 Yes! The WebP Support plugin is 100% free to download and use. Our goal is to help everyone achieve a faster, modern web.
 
 = Why should I register for support? =
-While the core features are free, registering your copy allows you to access priority technical support and receive automatic updates directly in your dashboard. It’s the best way to ensure your site stays compatible with future WordPress updates.
+While the core features are free, registering your copy allows you to access priority technical support and receive automatic updates directly in your dashboard. Itï¿½s the best way to ensure your site stays compatible with future WordPress updates.
 
 = How do I register? =
 Visit [https://thisismyurl.com/webp-support-thisismyurl/#register](https://thisismyurl.com/webp-support-thisismyurl/#register) to sign up. Once you have your key, enter it into the "License Key" field in the plugin settings to unlock support access.
@@ -54,16 +54,6 @@ No. The plugin optimizes the files you upload to ensure they are web-ready witho
 
 == Changelog ==
 
-= 1.26010222 =
-* Core hierarchy updated via webp-support-thisismyurl\README.md
-
-= 1.26010222 =
-* Core hierarchy updated via webp-support-thisismyurl\core\icons
-
-= 1.26010222 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-
 = 1.251229 =
 * Fixed GitHub updater directory renaming logic.
 * Corrected menu location to Tools submenu.
@@ -73,15 +63,15 @@ No. The plugin optimizes the files you upload to ensure they are web-ready witho
 * Final release with full WordPress coding standard compliance.
 * Implemented uninstall.php for clean database removal.
 
+== Roadmap ==
+* [Issue] Setting to Remove EXIF XMP Bloat
+* [Issue] Setting to Remove EXIF GPS and Timestamps 
+* [Issue] Setting to Remove EXIF Privacy Data
+* [Issue] Setting to Remove EXIF Software Identifiers
+* [Issue] Setting to Add Descriptive Metadata
+* [Issue] Setting to Add Copyright and Ownership
+* [Issue] Setting to Add Source URL
+* [Issue] Setting to Add Modification Date
 
-
-
-
-
-
-
-
-
-
-
+==
 
