@@ -1,4 +1,4 @@
-=== WebP Support by thisismyurl ===
+﻿=== WebP Support by thisismyurl ===
 Contributors: thisismyurl
 Author: thisismyurl
 Author URI: https://thisismyurl.com/
