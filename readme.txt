@@ -55,6 +55,9 @@ No. The plugin optimizes the files you upload to ensure they are web-ready witho
 == Changelog ==
 
 = 1.26010222 =
+* Core hierarchy updated via webp-support-thisismyurl\README.md
+
+= 1.26010222 =
 * Core hierarchy updated via webp-support-thisismyurl\core\icons
 
 = 1.26010222 =
