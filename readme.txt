@@ -13,431 +13,44 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 GitHub Plugin URI: https://github.com/thisismyurl/thisismyurl-webp-support/
 Primary Branch: main
 
-A free non-destructive WebP for WordPress: Auto-optimize new uploads & bulk-convert existing files with secure backups & 1-click restore.
+Unlock the full potential of high-performance imagery. Enable WebP uploads and automatically optimize or convert your files to next-gen formats for instant speed gains.
 
 == Description ==
 
-**Free WebP Optimizer by thisismyurl** is a lightweight, high-performance utility designed to maximize your site speed without the need for expensive monthly subscriptions or external API keys. By converting your images to the modern WebP format, you can significantly reduce file sizes while maintaining high visual quality.
+**WebP Support by thisismyurl.com** is a lightweight, professional-grade tool designed to make your WordPress site faster, leaner, and more responsive. 
 
-This plugin is built with a **Safety-First** philosophy: every time an image is converted, the original file is archived in a secure backup folder. If you ever need to revert, a single click restores your original JPEG or PNG perfectly.
+WebP images are the industry standard for modern web performance, offering significantly smaller file sizes than JPEG or PNG while maintaining crisp visual quality. This plugin ensures your WordPress workflow is fully optimized for these files, giving you better SEO rankings and a faster experience for your mobile users.
 
-### Key Features:
-* **100% Automatic:** New uploads are converted and optimized the moment they hit your Media Library.
-* **Bulk Processing:** Convert your entire historical library using an AJAX-powered tool that prevents server timeouts.
-* **Non-Destructive Workflow:** Original images are moved to `/uploads/webp-backups/` for safe keeping.
-* **Live Savings Report:** View a real-time dashboard showing exactly how many megabytes of server space you have saved.
-* **Individual & Bulk Restore:** Undo changes for a single image or your entire library at any time.
-* **GitHub Integrated:** Features a built-in updater to ensure you always have the latest security and performance patches.
+### The Power of Choice
+Unlike standard WebP plugins, this tool is "ecosystem aware." If you are also using our **AVIF Support** plugin, you can choose to automatically convert WebP uploads into the even more advanced AVIF format, ensuring your site always uses the absolute best compression technology available.
+
+### Key Benefits & Features:
+* **Enable WebP Uploads:** Safely bypass WordPress restrictions to manage `.webp` files directly in your Media Library.
+* **Automated Optimization:** Fine-tune the quality and compression of your WebP files as they are uploaded.
+* **Cross-Codec Upgrading:** Seamlessly convert WebP uploads to AVIF if the sibling plugin is detected.
+* **Precision Controls:** Use our intuitive quality sliders under **Tools > WebP Support** to find the perfect balance between file size and clarity.
+* **Lightweight & Reliable:** Built on our shared TIMU Core library to ensure maximum stability and zero site bloat.
 
 == Installation ==
 
-1. Upload the `thisismyurl-webp-support` folder to the `/wp-content/plugins/` directory.
+1. Upload the `webp-support-thisismyurl` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
-3. Navigate to **Media > WebP Support** to access the dashboard.
+3. Navigate to **Tools > WebP Support** to configure your optimization settings.
 
 == Frequently Asked Questions ==
 
+= Is this plugin free? =
+Yes! The WebP Support plugin is 100% free to download and use. Our goal is to help everyone achieve a faster, modern web.
+
+= Why should I register for support? =
+While the core features are free, registering your copy allows you to access priority technical support and receive automatic updates directly in your dashboard. It’s the best way to ensure your site stays compatible with future WordPress updates.
+
+= How do I register? =
+Visit [https://thisismyurl.com/webp-support-thisismyurl/#register](https://thisismyurl.com/webp-support-thisismyurl/#register) to sign up. Once you have your key, enter it into the "License Key" field in the plugin settings to unlock support access.
+
 = Does this delete my original images? =
-No. It moves them to a backup folder within your uploads directory. This ensures you never lose your original high-resolution files.
+No. The plugin optimizes the files you upload to ensure they are web-ready without destroying your original source content.
 
-= Will my images break if I delete the plugin? =
-We recommend using the "Restore All" button in the dashboard before uninstallation. This reverts your site back to using standard JPEGs and PNGs.
-
-= Does this support PNG transparency? =
-Yes! The conversion engine specifically preserves alpha channels to ensure your logos and transparent graphics remain crisp and clear.
-
-== Changelog ==
-
-= 1.26010218 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010218 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010218 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010218 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets\shared-admin.css
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core\class-timu-processor.php
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets\shared-admin.js
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets\shared-admin.js
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl
-
-= 1.26010217 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010217 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets
-
-= 1.26010217 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010216 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010216 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-ajax.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\assets\shared-admin.js
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010216 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010216 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets\shared-admin.css
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\core\desktop.ini
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010215 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010215 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core\class-timu-vault.php
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core\class-timu-vault.php
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core\class-timu-admin.php
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\webp-support-thisismyurl.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core\2682333820516292531891922458163187249407.ico
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010214 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets
-
-= 1.26010214 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010214 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010213 =
-* Core hierarchy updated via core\assets\shared-admin.js
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\core\2682333820516292531891922458163187249407.ico
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\core
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\core\assets\shared-admin.css
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-admin.php
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-core.php
-
-= 1.26010213 =
-* Core hierarchy updated via webp-support-thisismyurl\readme.txt
-
-= 1.26010213 =
-* Core hierarchy updated via core\class-timu-ajax.php
-
-= 1.26010213 =
-* Core hierarchy updated via Initial Launch
-
-= 1.26010213 =
-* Core hierarchy updated via Initial Script Launch
-
-= 1.26010212 =
-* TIMU_Core updated to version 1.26010212
-
-= 1.26010212 =
-* TIMU_Core updated to version 1.26010212
-
-= 1.26010212 =
-* TIMU_Core updated to version 1.26010212
-
-= 1.26010212 =
-* TIMU_Core updated to version 1.26010212
-n
-= 1.260102 =
-* Updated core library to version 1.260102
-n
-= 1.260102 =
-* Updated core library to version 1.260102
-n
-= 1.260101 =
-* Updated core library to version 1.260101
-n
 = 1.260101 =
 * Updated core library to version 1.260101
 
@@ -449,3 +62,16 @@ n
 = 1.251224 =
 * Final release with full WordPress coding standard compliance.
 * Implemented uninstall.php for clean database removal.
+
+
+
+
+
+
+
+
+
+
+
+
+
