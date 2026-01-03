@@ -2,7 +2,7 @@
 /**
  * Author:              Christopher Ross
  * Author URI:          https://thisismyurl.com/?source=webp-support-thisismyurl
- * Plugin Name:         WebP Support by thisismyurl.com
+ * Plugin Name:         WebP Support by thisismyurl
  * Plugin URI:          https://thisismyurl.com/webp-support-thisismyurl/?source=webp-support-thisismyurl
  * Donate link:         https://thisismyurl.com/webp-support-thisismyurl/#register?source=webp-support-thisismyurl
  * 
