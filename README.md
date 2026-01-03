@@ -2,7 +2,7 @@
 
 # WebP Support by thisismyurl
 ![Version](https://img.shields.io/badge/version-1.26010222-blue.svg)
-🔗 **[Plugin Homepage](https://thisismyurl.com/webp-support-thisismyurl/#register)**
+🔗 **[Register](https://thisismyurl.com/webp-support-thisismyurl/#register)**
 
 **WebP Support by thisismyurl.com** is a lightweight, professional-grade tool designed to make your WordPress site faster, leaner, and more responsive. 
 
@@ -24,16 +24,13 @@ Unlike standard WebP plugins, this tool is "ecosystem aware." If you are also us
 3. Navigate to **Tools > WebP Support** to configure your optimization settings.
 
 ## ❓ FAQ
-= Is this plugin free? =
+### Is this plugin free?
 Yes! The WebP Support plugin is 100% free to download and use. Our goal is to help everyone achieve a faster, modern web.
-
-= Why should I register for support? =
+### Why should I register for support?
 While the core features are free, registering your copy allows you to access priority technical support and receive automatic updates directly in your dashboard. It�s the best way to ensure your site stays compatible with future WordPress updates.
-
-= How do I register? =
+### How do I register?
 Visit [https://thisismyurl.com/webp-support-thisismyurl/#register](https://thisismyurl.com/webp-support-thisismyurl/#register) to sign up. Once you have your key, enter it into the "License Key" field in the plugin settings to unlock support access.
-
-= Does this delete my original images? =
+### Does this delete my original images?
 No. The plugin optimizes the files you upload to ensure they are web-ready without destroying your original source content.
 
 ## 🗺️ Roadmap & Activity
