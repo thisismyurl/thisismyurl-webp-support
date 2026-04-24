@@ -1,22 +1,24 @@
-# WEBP Support by thisismyurl.com
+# WEBP Support by This Is My URL
 
-Current version: 1.26112
+Current version: 1.6365
 
-WEBP Support by thisismyurl.com is a WordPress plugin that converts supported media attachments to WebP in a non-destructive way.
+WEBP Support by This Is My URL is a WordPress plugin that converts supported media attachments to WebP in a non-destructive way.
 
 ## Features
 
-- Bulk conversion from a single admin screen
-- Batch-based AJAX processing for better control on shared hosting
-- User-configurable WebP quality (0-100)
-- User-configurable batch size (1-100)
-- User-configurable format toggles (JPG/JPEG, PNG, GIF, BMP)
-- Automatic backup of original files before conversion
-- One-click per-image restore
-- Bulk restore for all plugin-managed images
-- Regeneration of WordPress attachment metadata after conversion/restore
-- Optional backup deletion on uninstall
-- Managed and pending image lists with excluded-format visibility
+- Tabbed admin UI (Optimize, Settings, Report)
+- Live search and pagination in pending and managed media tables
+- Batch AJAX conversion with visible spinner and continuous progress updates
+- Automatic backup of originals before conversion with one-click restore
+- Optional optimize-on-upload for supported file types
+- Optional background auto-optimize via wp-admin traffic and/or WP-Cron
+- Configurable auto-optimize interval and per-run batch size
+- Output filter to serve .webp URLs at render time without DB writes
+- Optional EXIF/GPS/device metadata stripping from converted WebP files
+- Optional embedded XMP metadata including creator tag for This Is My URL
+- ROI report with 30d/90d/12mo/all-time windows and business assumptions
+- Privacy-safe optional outbound UTM parameters for thisismyurl links
+- Activation checks for GD/Imagick image engine availability
 
 ## Requirements
 
@@ -27,9 +29,9 @@ WEBP Support by thisismyurl.com is a WordPress plugin that converts supported me
 ## Installation
 
 1. Copy this plugin into your plugins directory as thisismyurl-webp-support.
-2. Activate WEBP Support by thisismyurl.com in the WordPress admin.
+2. Activate WEBP Support by This Is My URL in the WordPress admin.
 3. Open Tools > WebP Support.
-4. Configure quality, batch size, enabled source formats, and uninstall behavior.
+4. Configure quality, automation, metadata, and reporting assumptions.
 5. Start optimization.
 
 ## How Backup and Restore Works
@@ -41,9 +43,14 @@ WEBP Support by thisismyurl.com is a WordPress plugin that converts supported me
 
 ## User Controls
 
-- WebP quality control for output quality/size balancing
-- Batch size control for server resource pacing
-- Per-format conversion controls for JPG/JPEG, PNG, GIF, BMP
+- WebP quality and manual batch-size controls
+- Source-format toggles for JPG/JPEG, PNG, GIF, BMP
+- Optimize-on-upload and auto-optimize controls (admin and cron)
+- Auto-optimize interval and run-size controls
+- Metadata privacy controls (strip harmful metadata, embed site metadata)
+- Output filter toggle for render-time URL swapping
+- Reporting assumptions for monthly image hits and bandwidth cost
+- Outbound UTM toggle for thisismyurl links
 - Uninstall cleanup control for backup retention
 
 ## Security and Standards
@@ -60,10 +67,10 @@ WEBP Support by thisismyurl.com is a WordPress plugin that converts supported me
 
 This plugin uses the format 1.Yddd:
 
-- Y = last two digits of the year
-- ddd = Julian day of year
+- Y = last digit of the year
+- ddd = Julian day number for the final day of that year
 
-For April 22, 2026 this is 1.26112.
+For 2026, this is 1.6365.
 
 ## License
 
