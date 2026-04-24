@@ -3,7 +3,7 @@
  * Plugin Name:       WEBP Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP conversion with backups, bulk processing, and one-click restoration.
- * Version:           1.26112
+ * Version:           0.6112
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
@@ -824,3 +824,13 @@ class TIMU_WEBP_Support {
 }
 
 TIMU_WEBP_Support::init();
+
+require_once plugin_dir_path( __FILE__ ) . 'github-updater.php';
+
+timu_boot_github_release_updater(
+    array(
+        'plugin_file' => __FILE__,
+        'slug'        => 'thisismyurl-webp-support',
+        'repo'        => 'thisismyurl/thisismyurl-webp-support',
+    )
+);
