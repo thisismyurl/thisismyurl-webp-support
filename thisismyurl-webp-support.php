@@ -3,7 +3,7 @@
  * Plugin Name:       WEBP Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP conversion with backups, bulk processing, and one-click restoration.
- * Version:           0.6112
+ * Version:           0.6115
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0

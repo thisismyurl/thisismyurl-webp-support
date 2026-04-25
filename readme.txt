@@ -5,7 +5,7 @@ Tags: webp, images, media, optimization, compression
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.6112
+Stable tag: 0.6115
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,7 @@ WEBP Support by thisismyurl.com converts supported image attachments (JPEG, PNG,
 
 Key features:
 
-* Bulk optimization from a single admin screen.
+* Tabbed admin experience with Optimize, Settings, and Report tabs.
 * Configurable batch size to control server load.
 * Configurable WebP quality setting.
 * Per-format conversion toggles (JPG/JPEG, PNG, GIF, BMP).
@@ -25,6 +25,11 @@ Key features:
 * One-click single restore and bulk restore.
 * Status visibility for missing files and managed media.
 * Regenerates attachment metadata after conversion and restore.
+* Search and pagination for long media lists.
+* Optional optimize-on-upload and background auto optimization.
+* Optional metadata strip/embed controls for privacy and attribution.
+* Business-friendly ROI report metrics with date ranges.
+* Optional privacy-safe UTM tags on thisismyurl outbound links.
 * Optional backup deletion on uninstall.
 
 How it works:
@@ -63,46 +68,18 @@ Yes. You can enable or disable conversion for JPG/JPEG, PNG, GIF, and BMP.
 = Does this require Imagick? =
 No. It uses WordPress image editors and supports environments with either GD or Imagick.
 
-== Support, Contributing & Sponsorship ==
-
-= I want to support you =
-
-I'm building these tools because WordPress developers and site owners deserve straightforward, practical solutions. There's no tracking, no ads, and you don't need to pay to use these plugins.
-
-If they're helpful, here are genuine ways to support the work:
-
-* **Sponsor this project:** Visit https://github.com/sponsors/thisismyurl if sponsorship fits your budget. Sponsorship helps, but it's always optional.
-* **Contribute code or ideas:** Opening a pull request, reporting an issue, or testing edge cases is just as valuable as sponsorship. Helping me improve these plugins is a great way to contribute.
-* **Share your experience:** A review on my [Google My Business profile](https://business.google.com/refer) or a follow on [WordPress.org](https://profiles.wordpress.org/thisismyurl/), [GitHub](https://github.com/thisismyurl), or [LinkedIn](https://linkedin.com/in/thisismyurl) helps others find this work.
-
-= I found a bug or have a feature idea =
-
-* **File an issue on GitHub:** Visit https://github.com/thisismyurl/[plugin-name]/issues and include your WordPress and PHP version.
-* **Start a discussion:** Use the Discussions tab on GitHub for questions or ideas.
-
-= I want to contribute code =
-
-Code contributions are welcome and genuinely valuable:
-
-1. Fork the repository on GitHub.
-2. Create a feature branch (e.g., `feature/improve-safety`).
-3. Make your changes and test thoroughly.
-4. Follow WordPress coding standards.
-5. Open a pull request with a clear description of what changed and why.
-
-I review PRs thoughtfully and appreciate well-tested contributions. Contributing is never required, but it's genuinely helpful.
-
-
 == Changelog ==
 
-= 1.26112 =
-* Added full settings controls for quality, batch size, mime-type toggles, and uninstall behavior.
-* Replaced inline JavaScript with WordPress-enqueued admin assets.
-* Added batched AJAX processing for more stable large-library optimization.
-* Switched conversion flow to WordPress image editor stack and regenerate metadata on file changes.
-* Improved managed media statuses for excluded formats.
+= 0.6115 =
+* Added upload-time optimization and background auto optimization controls (admin access and WP-Cron).
+* Added installation-time GD/Imagick capability checks and admin environment notices.
+* Added report tab with business ROI metrics for 30d/90d/12mo/all-time windows.
+* Added metadata controls for stripping sensitive metadata and embedding site XMP metadata.
+* Added search and pagination controls to optimize and managed media tables.
+* Added optional privacy-safe UTM tagging for links to thisismyurl.com.
+* Improved optimize UX with active spinner and more frequent progress updates.
 
 == Upgrade Notice ==
 
-= 1.26112 =
-Submission-ready release with standards and security improvements.
+= 0.6115 =
+Major feature release with automation, reporting, and improved admin UX.
