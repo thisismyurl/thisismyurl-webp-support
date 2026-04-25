@@ -14,6 +14,7 @@
  *
  * @package TIMU_WEBP_Support
  */
+ 
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -26,6 +27,7 @@ class TIMU_WEBP_Support {
     const SAVINGS_META_KEY  = '_webp_savings';
     const OPTION_KEY        = 'timu_webp_support_options';
     const SETTINGS_GROUP    = 'timu_webp_support_settings';
+        const LOCK_PREFIX       = 'timu_webp_lock_';
 
     /**
      * Initialize plugin hooks.
@@ -39,6 +41,7 @@ class TIMU_WEBP_Support {
         add_action( 'wp_ajax_timu_wsbulk_optimize', array( __CLASS__, 'ajax_bulk_optimize' ) );
         add_action( 'wp_ajax_timu_wsprocess_batch', array( __CLASS__, 'ajax_process_batch' ) );
         add_action( 'wp_ajax_timu_wsrestore_single', array( __CLASS__, 'ajax_restore_single' ) );
+            add_action( 'wp_ajax_timu_wsconvert_theme_batch', array( __CLASS__, 'ajax_convert_theme_batch' ) );
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
     }
 
@@ -68,6 +71,7 @@ class TIMU_WEBP_Support {
      */
     public static function enqueue_admin_assets( $hook_suffix ) {
         if ( 'tools_page_webp-optimizer' !== $hook_suffix ) {
+
             return;
         }
 
@@ -294,6 +298,147 @@ class TIMU_WEBP_Support {
 
         return trailingslashit( $upload_dir['basedir'] . '/webp-backups/' . $subdir );
     }
+
+        /**
+         * Scan the active (and child) theme directories for convertible image files.
+         *
+         * Returns an array of file-info arrays with keys:
+         *   path       – absolute filesystem path
+         *   rel        – path relative to ABSPATH (for display)
+         *   ext        – lowercase file extension
+         *   size       – file size in bytes
+         *   webp_exists – whether a .webp sibling already exists
+         *
+         * @return array
+         */
+        public static function get_theme_images() {
+            $dirs = array_unique(
+                array_filter(
+                    array(
+                        get_template_directory(),
+                        get_stylesheet_directory(),
+                    ),
+                    'is_dir'
+                )
+            );
+
+            $extensions = array( 'jpg', 'jpeg', 'png', 'gif', 'bmp' );
+            $images     = array();
+
+            foreach ( $dirs as $dir ) {
+                try {
+                    $iterator = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ),
+                        RecursiveIteratorIterator::LEAVES_ONLY
+                    );
+
+                    foreach ( $iterator as $file ) {
+                        if ( ! $file->isFile() ) {
+                            continue;
+                        }
+
+                        $ext = strtolower( $file->getExtension() );
+                        if ( ! in_array( $ext, $extensions, true ) ) {
+                            continue;
+                        }
+
+                        $abs_path  = $file->getPathname();
+                        $webp_path = self::swap_extension( $abs_path, 'webp' );
+
+                        $images[] = array(
+                            'path'        => $abs_path,
+                            'rel'         => str_replace( ABSPATH, '', $abs_path ),
+                            'ext'         => $ext,
+                            'size'        => $file->getSize(),
+                            'webp_exists' => file_exists( $webp_path ),
+                        );
+                    }
+                } catch ( Exception $e ) {
+                    // Scan failure for one directory should not halt the rest.
+                }
+            }
+
+            return $images;
+        }
+
+        /**
+         * Convert a single theme-directory image to WebP.
+         *
+         * Unlike Media Library conversion the original file is kept alongside its
+         * .webp copy — theme templates reference the original filename. The WebP
+         * sibling will be served transparently by compatible caching/CDN layers.
+         * "Restoration" simply removes the generated .webp file.
+         *
+         * @param string   $source_path Absolute path within an active theme directory.
+         * @param int|null $quality     WebP quality, or null to use plugin settings.
+         *
+         * @return true|WP_Error
+         */
+        public static function convert_theme_image( $source_path, $quality = null ) {
+            $resolved = realpath( $source_path );
+            if ( ! $resolved ) {
+                return new WP_Error( 'missing', __( 'File not found.', 'thisismyurl-webp-support' ) );
+            }
+
+            // Security: path must sit inside an allowed theme directory.
+            $allowed = array_unique(
+                array_filter(
+                    array(
+                        realpath( get_template_directory() ),
+                        realpath( get_stylesheet_directory() ),
+                    ),
+                    'is_string'
+                )
+            );
+
+            $in_allowed = false;
+            foreach ( $allowed as $dir ) {
+                // Use strpos for PHP 7.4 compat (str_starts_with requires PHP 8.0).
+                if ( 0 === strpos( $resolved, $dir . DIRECTORY_SEPARATOR ) || $resolved === $dir ) {
+                    $in_allowed = true;
+                    break;
+                }
+            }
+
+            if ( ! $in_allowed ) {
+                return new WP_Error( 'path', __( 'File is outside the active theme directories.', 'thisismyurl-webp-support' ) );
+            }
+
+            $ext = strtolower( pathinfo( $resolved, PATHINFO_EXTENSION ) );
+            if ( 'webp' === $ext ) {
+                return new WP_Error( 'already_webp', __( 'File is already WebP.', 'thisismyurl-webp-support' ) );
+            }
+
+            $webp_path = self::swap_extension( $resolved, 'webp' );
+            if ( file_exists( $webp_path ) ) {
+                return new WP_Error( 'exists', __( 'A WebP version of this file already exists.', 'thisismyurl-webp-support' ) );
+            }
+
+            if ( null === $quality ) {
+                $quality = self::get_quality_setting();
+            }
+
+            $info = wp_getimagesize( $resolved );
+            if ( empty( $info['mime'] ) || ! in_array( $info['mime'], self::get_enabled_source_mimes(), true ) ) {
+                return new WP_Error( 'mime', __( 'Unsupported image format.', 'thisismyurl-webp-support' ) );
+            }
+
+            $editor = wp_get_image_editor( $resolved );
+            if ( is_wp_error( $editor ) ) {
+                return $editor;
+            }
+
+            if ( method_exists( $editor, 'set_quality' ) ) {
+                $editor->set_quality( $quality );
+            }
+
+            $saved = $editor->save( $webp_path, 'image/webp' );
+            if ( is_wp_error( $saved ) || ! file_exists( $webp_path ) ) {
+                return new WP_Error( 'webp', __( 'Failed to create WebP file.', 'thisismyurl-webp-support' ) );
+            }
+
+            return true;
+        }
 
     /**
      * Return lists of pending and managed media items.
@@ -598,6 +743,18 @@ class TIMU_WEBP_Support {
             $lists['pending']
         );
         $restorable  = array();
+        $theme_images = self::get_theme_images();
+        $theme_pending_paths = array_values(
+            array_column(
+                array_filter(
+                    $theme_images,
+                    static function ( $img ) {
+                        return ! $img['webp_exists'];
+                    }
+                ),
+                'path'
+            )
+        );
 
         foreach ( $lists['media'] as $post ) {
             $orig = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
@@ -624,6 +781,10 @@ class TIMU_WEBP_Support {
                         'confirmRestoreAll'=> __( 'Restore all images? This cannot be undone.', 'thisismyurl-webp-support' ),
                         'failedPrefix'     => __( 'Some images failed:', 'thisismyurl-webp-support' ),
                     ),
+                        'themeImagePaths'    => $theme_pending_paths,
+                        'themeActions'       => array(
+                            'convertThemeBatch' => 'timu_wsconvert_theme_batch',
+                        ),
                 )
             ) . ';',
             'before'
@@ -783,6 +944,51 @@ class TIMU_WEBP_Support {
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="postbox">
+                            <h2 class="hndle"><span><?php esc_html_e( 'Theme Images', 'thisismyurl-webp-support' ); ?> (<span id="ti-cnt"><?php echo esc_html( count( $theme_pending_paths ) ); ?></span>)</span></h2>
+                            <div class="inside">
+                                <?php if ( ! empty( $theme_pending_paths ) ) : ?>
+                                    <div class="fwo-controls" style="display:flex;gap:10px;align-items:center;">
+                                        <button id="btn-theme-start" class="button button-primary button-large">
+                                            <?php printf( esc_html__( 'Convert All %d Theme Images', 'thisismyurl-webp-support' ), count( $theme_pending_paths ) ); ?>
+                                        </button>
+                                        <span id="ti-status" class="description"></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <table class="widefat striped" id="fwo-theme-table" style="margin-top:12px;border:none;box-shadow:none;">
+                                    <thead>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Path', 'thisismyurl-webp-support' ); ?></th>
+                                            <th><?php esc_html_e( 'Type', 'thisismyurl-webp-support' ); ?></th>
+                                            <th><?php esc_html_e( 'Size', 'thisismyurl-webp-support' ); ?></th>
+                                            <th><?php esc_html_e( 'Status', 'thisismyurl-webp-support' ); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if ( empty( $theme_images ) ) : ?>
+                                            <tr class="no-images"><td colspan="4"><?php esc_html_e( 'No supported image files were found in the active theme directories.', 'thisismyurl-webp-support' ); ?></td></tr>
+                                        <?php else : ?>
+                                            <?php foreach ( $theme_images as $theme_image ) : ?>
+                                                <tr data-theme-path="<?php echo esc_attr( $theme_image['path'] ); ?>">
+                                                    <td><code><?php echo esc_html( $theme_image['rel'] ); ?></code></td>
+                                                    <td><?php echo esc_html( strtoupper( $theme_image['ext'] ) ); ?></td>
+                                                    <td><?php echo esc_html( size_format( (int) $theme_image['size'] ) ); ?></td>
+                                                    <td>
+                                                        <?php if ( $theme_image['webp_exists'] ) : ?>
+                                                            <span style="color:#00a32a;">&#10003; <?php esc_html_e( 'WebP Exists', 'thisismyurl-webp-support' ); ?></span>
+                                                        <?php else : ?>
+                                                            <span class="theme-status-pending"><?php esc_html_e( 'Pending', 'thisismyurl-webp-support' ); ?></span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
