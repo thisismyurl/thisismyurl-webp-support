@@ -1,5 +1,8 @@
 # WEBP Support by This Is My URL
 
+[![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml) [![WordPress Tested](https://img.shields.io/badge/WordPress-6.8%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
+
+
 Current version: 0.6115
 
 WEBP Support by This Is My URL is a WordPress plugin that converts supported media attachments to WebP in a non-destructive way.
