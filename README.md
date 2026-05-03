@@ -1,81 +1,81 @@
 # WEBP Support by This Is My URL
 
-[![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml) [![WordPress Tested](https://img.shields.io/badge/WordPress-6.8%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
+[![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml) [![WordPress Tested](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
 
+Current version: **0.6123**
 
-Current version: 0.6115
+A WordPress plugin that converts Media Library attachments (JPEG, PNG, GIF, BMP) to WebP non-destructively, with safe backups and one-click restore. Built for site owners who want WebP without giving up the ability to roll back.
 
-WEBP Support by This Is My URL is a WordPress plugin that converts supported media attachments to WebP in a non-destructive way.
+## What It Does
 
-## Features
+- Tools > WebP Support page with Optimize, Settings, Pending, and Managed Media sections.
+- Configurable WebP quality (0–100) and AJAX batch size (1–100).
+- Per-format conversion toggles for JPG/JPEG, PNG, GIF, and BMP.
+- Non-destructive batch conversion with progress bar and a working Cancel.
+- Single-image Restore plus a Restore All Originals bulk action.
+- Per-attachment lock so two operators (or two browser tabs) cannot race the same file.
+- Attachment metadata regenerated after each conversion or restoration.
+- Optional backup-folder cleanup on uninstall.
+- WP-CLI: `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status`.
 
-- Tabbed admin UI (Optimize, Settings, Report)
-- Live search and pagination in pending and managed media tables
-- Batch AJAX conversion with visible spinner and continuous progress updates
-- Automatic backup of originals before conversion with one-click restore
-- Optional optimize-on-upload for supported file types
-- Optional background auto-optimize via wp-admin traffic and/or WP-Cron
-- Configurable auto-optimize interval and per-run batch size
-- Output filter to serve .webp URLs at render time without DB writes
-- Optional EXIF/GPS/device metadata stripping from converted WebP files
-- Optional embedded XMP metadata including creator tag for This Is My URL
-- ROI report with 30d/90d/12mo/all-time windows and business assumptions
-- Privacy-safe optional outbound UTM parameters for thisismyurl links
-- Activation checks for GD/Imagick image engine availability
+## What It Does Not Do
+
+The 0.6115 README listed several features that were never in the code. Those claims have been retracted. This plugin does **not** ship:
+
+- A tabbed admin UI or ROI report.
+- Optimize-on-upload, background auto-optimize, or WP-Cron scheduling.
+- EXIF / GPS / metadata stripping.
+- Render-time URL swapping or any output filter.
+- Outbound UTM tagging.
+- Search or pagination on the admin tables.
+- Theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
+
+If you need any of those, this is not the plugin for you. Open an issue if you'd like one of them added.
 
 ## Requirements
 
-- WordPress 6.0+
-- PHP 7.4+
+- WordPress 6.0 or later
+- PHP 8.1 or later
 - WordPress image editor support (GD or Imagick)
 
 ## Installation
 
-1. Copy this plugin into your plugins directory as thisismyurl-webp-support.
-2. Activate WEBP Support by This Is My URL in the WordPress admin.
-3. Open Tools > WebP Support.
-4. Configure quality, automation, metadata, and reporting assumptions.
-5. Start optimization.
+1. Copy this plugin into your plugins directory as `thisismyurl-webp-support/`.
+2. Activate **WEBP Support by This Is My URL** in `wp-admin > Plugins`.
+3. Open `Tools > WebP Support`.
+4. Configure quality, batch size, and enabled source formats.
+5. Click **Optimize All** to start.
 
 ## How Backup and Restore Works
 
-- On conversion, the original image is moved to uploads/webp-backups/.
-- The attachment is updated to use the generated .webp file.
-- Restoring moves the original file back and restores attachment mime/file metadata.
-- Attachment metadata is regenerated whenever a file is converted or restored.
-
-## User Controls
-
-- WebP quality and manual batch-size controls
-- Source-format toggles for JPG/JPEG, PNG, GIF, BMP
-- Optimize-on-upload and auto-optimize controls (admin and cron)
-- Auto-optimize interval and run-size controls
-- Metadata privacy controls (strip harmful metadata, embed site metadata)
-- Output filter toggle for render-time URL swapping
-- Reporting assumptions for monthly image hits and bandwidth cost
-- Outbound UTM toggle for thisismyurl links
-- Uninstall cleanup control for backup retention
+- On conversion the original is moved to `uploads/webp-backups/<original-subdir>/`.
+- The attachment record is updated to point at the new `.webp` file.
+- Backup paths are stored relative to `uploads/basedir/` so dev↔prod database copies survive migration. Legacy absolute paths from earlier versions are still understood on read.
+- Restoring moves the original back, deletes the WebP, and regenerates metadata.
 
 ## Security and Standards
 
-- Direct access protection with ABSPATH checks
-- Nonce checks for AJAX actions
-- Capability checks for admin operations
-- Escaping and sanitization aligned with WordPress coding standards
-- Settings API usage with sanitization callbacks
-- Admin scripts enqueued with WordPress script APIs
-- WordPress.org-compatible plugin headers and packaging
+- Direct-access protection (`ABSPATH` check).
+- Nonce verification on every AJAX action.
+- `current_user_can( 'manage_options' )` capability checks on every admin / AJAX handler.
+- Output escaping and input sanitization aligned with WordPress Coding Standards.
+- Settings API used with a sanitization callback.
+- No external services. No phone-home. No telemetry.
 
 ## Versioning
 
-This plugin uses the format x.Yddd:
+This plugin uses the format `x.Yddd`:
 
-- x = release class (`0` pre-release, `1` full release)
-- Y = last digit of the year
-- ddd = Julian day number for the release date
+- `x` = release class (`0` pre-release, `1` full release)
+- `Y` = last digit of the year
+- `ddd` = Julian day of the release
 
-For April 25, 2026, the pre-release version is 0.6115.
+`0.6123` = pre-release built on Julian day 123 of 2026 (May 3).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-GPL-2.0-or-later
+GPL-2.0-or-later. See [LICENSE](LICENSE).
