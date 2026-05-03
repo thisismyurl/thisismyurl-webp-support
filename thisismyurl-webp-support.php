@@ -223,17 +223,29 @@ class TIMU_WEBP_Support {
     /**
      * Initialize the WordPress Filesystem API.
      *
-     * @return WP_Filesystem_Base|false
+     * Falls back to a thin direct-PHP shim when WP_Filesystem refuses to
+     * initialise (typically because the host wants FTP/SSH credentials and
+     * we have no UI surface to prompt). Every entry point that calls this is
+     * already gated by `current_user_can( 'manage_options' )`, so dropping
+     * to direct file ops is acceptable in this code path.
+     *
+     * @return WP_Filesystem_Base|TIMU_WEBP_Direct_FS
      */
     private static function init_fs() {
         global $wp_filesystem;
 
-        if ( empty( $wp_filesystem ) ) {
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-            WP_Filesystem();
+        if ( ! empty( $wp_filesystem ) && is_object( $wp_filesystem ) ) {
+            return $wp_filesystem;
         }
 
-        return $wp_filesystem;
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        WP_Filesystem();
+
+        if ( ! empty( $wp_filesystem ) && is_object( $wp_filesystem ) ) {
+            return $wp_filesystem;
+        }
+
+        return new TIMU_WEBP_Direct_FS();
     }
 
     /**
@@ -983,6 +995,97 @@ class TIMU_WEBP_Support {
             </div>
         </div>
         <?php
+    }
+}
+
+/**
+ * Minimal direct-PHP filesystem shim used when WP_Filesystem refuses to
+ * initialise (typically a host that wants FTP/SSH credentials and gives us
+ * no UI to surface them). Implements the methods this plugin actually calls
+ * — `exists`, `delete`, `move` — with the same return shapes WP_Filesystem
+ * uses, so callers don't need to branch on which backend they got.
+ *
+ * Only acceptable here because every entry point that touches the filesystem
+ * is already capability-gated to `manage_options`.
+ */
+class TIMU_WEBP_Direct_FS {
+
+    /**
+     * Whether a path exists.
+     *
+     * @param string $path Absolute filesystem path.
+     *
+     * @return bool
+     */
+    public function exists( $path ) {
+        return file_exists( $path );
+    }
+
+    /**
+     * Delete a file or directory.
+     *
+     * @param string $path      Absolute filesystem path.
+     * @param bool   $recursive Recurse into directories.
+     *
+     * @return bool
+     */
+    public function delete( $path, $recursive = false ) {
+        if ( ! file_exists( $path ) ) {
+            return false;
+        }
+
+        if ( is_file( $path ) || is_link( $path ) ) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- WP_Filesystem unavailable; see init_fs().
+            return @unlink( $path );
+        }
+
+        if ( ! $recursive ) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.rmdir_rmdir -- WP_Filesystem unavailable; see init_fs().
+            return @rmdir( $path );
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator( $path, FilesystemIterator::SKIP_DOTS ),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ( $iterator as $child ) {
+            if ( $child->isDir() ) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.rmdir_rmdir -- WP_Filesystem unavailable; see init_fs().
+                @rmdir( $child->getPathname() );
+            } else {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink -- WP_Filesystem unavailable; see init_fs().
+                @unlink( $child->getPathname() );
+            }
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.rmdir_rmdir -- WP_Filesystem unavailable; see init_fs().
+        return @rmdir( $path );
+    }
+
+    /**
+     * Move a file, optionally overwriting the destination.
+     *
+     * @param string $source      Absolute source path.
+     * @param string $destination Absolute destination path.
+     * @param bool   $overwrite   Overwrite if destination exists.
+     *
+     * @return bool
+     */
+    public function move( $source, $destination, $overwrite = false ) {
+        if ( ! file_exists( $source ) ) {
+            return false;
+        }
+
+        if ( file_exists( $destination ) ) {
+            if ( ! $overwrite ) {
+                return false;
+            }
+            $this->delete( $destination );
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- WP_Filesystem unavailable; see init_fs().
+        return @rename( $source, $destination );
     }
 }
 
