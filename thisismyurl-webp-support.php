@@ -305,26 +305,51 @@ class TIMU_WEBP_Support {
     /**
      * Return lists of pending and managed media items.
      *
-     * @return array
+     * Walks the attachment table in pages of 200 IDs to keep memory bounded on
+     * large libraries. The admin Tools view materialises full WP_Post objects
+     * for each row it actually displays, so we only hydrate IDs here and let
+     * `get_post()` warm the cache on demand inside the loop.
+     *
+     * @return array {
+     *     @type WP_Post[] $pending Attachments awaiting WebP conversion.
+     *     @type WP_Post[] $media   Attachments already managed (or with status flags).
+     * }
      */
     public static function get_media_lists() {
-        $source_mimes = array_values( self::get_extension_mime_map() );
+        $source_mimes  = array_values( self::get_extension_mime_map() );
         $enabled_mimes = self::get_enabled_source_mimes();
-        $query        = new WP_Query(
-            array(
-                'post_type'      => 'attachment',
-                'post_status'    => 'inherit',
-                'posts_per_page' => -1,
-                'no_found_rows'  => true,
-                'post_mime_type' => array_merge( $source_mimes, array( 'image/webp' ) ),
-            )
-        );
+        $mime_filter   = array_merge( $source_mimes, array( 'image/webp' ) );
 
-        $pending = array();
-        $media   = array();
+        $pending  = array();
+        $media    = array();
+        $page     = 1;
+        $per_page = 200;
 
-        if ( ! empty( $query->posts ) ) {
-            foreach ( $query->posts as $post ) {
+        do {
+            $query = new WP_Query(
+                array(
+                    'post_type'              => 'attachment',
+                    'post_status'            => 'inherit',
+                    'posts_per_page'         => $per_page,
+                    'paged'                  => $page,
+                    'fields'                 => 'ids',
+                    'no_found_rows'          => true,
+                    'update_post_meta_cache' => false,
+                    'update_post_term_cache' => false,
+                    'post_mime_type'         => $mime_filter,
+                )
+            );
+
+            if ( empty( $query->posts ) ) {
+                break;
+            }
+
+            foreach ( $query->posts as $attachment_id ) {
+                $post = get_post( $attachment_id );
+                if ( ! $post ) {
+                    continue;
+                }
+
                 $file      = get_attached_file( $post->ID );
                 $mime      = get_post_mime_type( $post->ID );
                 $orig_path = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
@@ -350,7 +375,10 @@ class TIMU_WEBP_Support {
                     $media[]             = $post;
                 }
             }
-        }
+
+            $fetched = count( $query->posts );
+            ++$page;
+        } while ( $fetched === $per_page );
 
         return array(
             'pending' => $pending,
