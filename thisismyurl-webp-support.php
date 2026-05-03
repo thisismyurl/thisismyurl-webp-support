@@ -27,7 +27,8 @@ class TIMU_WEBP_Support {
     const SAVINGS_META_KEY  = '_webp_savings';
     const OPTION_KEY        = 'timu_webp_support_options';
     const SETTINGS_GROUP    = 'timu_webp_support_settings';
-        const LOCK_PREFIX       = 'timu_webp_lock_';
+    const LOCK_PREFIX       = 'timu_webp_lock_';
+    const LOCK_TTL_SECONDS  = 300;
 
     /**
      * Initialize plugin hooks.
@@ -387,6 +388,39 @@ class TIMU_WEBP_Support {
     }
 
     /**
+     * Acquire a per-attachment lock to prevent concurrent conversion or
+     * restoration of the same file.
+     *
+     * Backed by a transient so it survives across requests and processes. Two
+     * browser tabs (or two operators) hitting Optimize on the same attachment
+     * will see the second attempt short-circuit, rather than racing each other
+     * through `wp_get_image_editor`, `move`, and `wp_update_post`.
+     *
+     * @param int $attachment_id Attachment ID.
+     *
+     * @return bool True if the lock was acquired, false if already held.
+     */
+    private static function acquire_lock( $attachment_id ) {
+        $key = self::LOCK_PREFIX . (int) $attachment_id;
+        if ( false !== get_transient( $key ) ) {
+            return false;
+        }
+
+        return (bool) set_transient( $key, time(), self::LOCK_TTL_SECONDS );
+    }
+
+    /**
+     * Release a per-attachment lock acquired via acquire_lock().
+     *
+     * @param int $attachment_id Attachment ID.
+     *
+     * @return void
+     */
+    private static function release_lock( $attachment_id ) {
+        delete_transient( self::LOCK_PREFIX . (int) $attachment_id );
+    }
+
+    /**
      * Convert an image to WebP and back up the original.
      *
      * @param int $attachment_id Attachment ID.
@@ -395,6 +429,28 @@ class TIMU_WEBP_Support {
      * @return true|WP_Error
      */
     public static function convert_to_webp( $attachment_id, $quality = null ) {
+        $attachment_id = (int) $attachment_id;
+
+        if ( ! self::acquire_lock( $attachment_id ) ) {
+            return new WP_Error( 'locked', __( 'Another process is already converting this image.', 'thisismyurl-webp-support' ) );
+        }
+
+        try {
+            return self::convert_to_webp_locked( $attachment_id, $quality );
+        } finally {
+            self::release_lock( $attachment_id );
+        }
+    }
+
+    /**
+     * Inner conversion routine. Caller must hold the per-attachment lock.
+     *
+     * @param int      $attachment_id Attachment ID.
+     * @param int|null $quality       WebP quality, or null to use plugin settings.
+     *
+     * @return true|WP_Error
+     */
+    private static function convert_to_webp_locked( $attachment_id, $quality = null ) {
         $fs        = self::init_fs();
         $full_path = get_attached_file( $attachment_id );
 
@@ -471,6 +527,27 @@ class TIMU_WEBP_Support {
      * @return bool
      */
     public static function restore_image( $attachment_id ) {
+        $attachment_id = (int) $attachment_id;
+
+        if ( ! self::acquire_lock( $attachment_id ) ) {
+            return false;
+        }
+
+        try {
+            return self::restore_image_locked( $attachment_id );
+        } finally {
+            self::release_lock( $attachment_id );
+        }
+    }
+
+    /**
+     * Inner restoration routine. Caller must hold the per-attachment lock.
+     *
+     * @param int $attachment_id Attachment ID.
+     *
+     * @return bool
+     */
+    private static function restore_image_locked( $attachment_id ) {
         $fs          = self::init_fs();
         $backup_path = get_post_meta( $attachment_id, self::BACKUP_META_KEY, true );
 
