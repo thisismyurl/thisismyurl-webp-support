@@ -1,0 +1,34 @@
+# Files and directories excluded from the .org distribution zip.
+# Anything not listed here ships in the runtime plugin.
+
+# Repo metadata.
+.git
+.github
+.gitignore
+.gitattributes
+.distignore
+
+# Project housekeeping that has no runtime value on a user's site.
+CONTRIBUTING.md
+SECURITY.md
+CHANGELOG.md
+README.md
+
+# Build / dev tooling, none of which is shipped today but reserved.
+node_modules
+vendor
+phpcs.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan.neon.dist
+composer.json
+composer.lock
+package.json
+package-lock.json
+
+# Editor and OS noise.
+.editorconfig
+.idea
+.vscode
+.DS_Store
+Thumbs.db
