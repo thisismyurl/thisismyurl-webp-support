@@ -388,6 +388,56 @@ class TIMU_WEBP_Support {
     }
 
     /**
+     * Resolve a stored backup-path meta value to an absolute filesystem path.
+     *
+     * New conversions (0.6123+) write the path relative to `uploads/basedir/`
+     * so dev↔prod database copies and host migrations don't orphan backups.
+     * Legacy values written by earlier versions stored an absolute path; this
+     * reader honours both shapes by leaf-checking for the absolute marker
+     * before treating the value as relative.
+     *
+     * The sentinel string `external` (set on pre-existing WebP attachments
+     * that were never converted by this plugin) is passed through unchanged.
+     *
+     * @param string $stored Raw meta value from `_webp_original_path`.
+     *
+     * @return string Absolute path, sentinel, or empty string.
+     */
+    private static function resolve_backup_path( $stored ) {
+        if ( '' === $stored || 'external' === $stored ) {
+            return (string) $stored;
+        }
+
+        // Legacy absolute path — Unix `/foo`, Windows `C:\foo`, or UNC `\\server\foo`.
+        if ( '/' === $stored[0] || '\\' === $stored[0] || ( isset( $stored[1] ) && ':' === $stored[1] ) ) {
+            return $stored;
+        }
+
+        $upload_dir = wp_upload_dir();
+        return trailingslashit( $upload_dir['basedir'] ) . ltrim( $stored, '/\\' );
+    }
+
+    /**
+     * Convert an absolute backup path to the uploads-relative form we now
+     * persist to postmeta. If the path sits outside uploads we fall back to
+     * storing the absolute value so the data round-trips losslessly.
+     *
+     * @param string $absolute_path Absolute filesystem path.
+     *
+     * @return string
+     */
+    private static function relativize_backup_path( $absolute_path ) {
+        $upload_dir = wp_upload_dir();
+        $basedir    = trailingslashit( $upload_dir['basedir'] );
+
+        if ( 0 === strpos( $absolute_path, $basedir ) ) {
+            return substr( $absolute_path, strlen( $basedir ) );
+        }
+
+        return $absolute_path;
+    }
+
+    /**
      * Acquire a per-attachment lock to prevent concurrent conversion or
      * restoration of the same file.
      *
@@ -503,7 +553,7 @@ class TIMU_WEBP_Support {
             return new WP_Error( 'move', __( 'Failed to archive original file.', 'thisismyurl-webp-support' ) );
         }
 
-        update_post_meta( $attachment_id, self::BACKUP_META_KEY, $backup_path );
+        update_post_meta( $attachment_id, self::BACKUP_META_KEY, self::relativize_backup_path( $backup_path ) );
         update_post_meta( $attachment_id, self::SAVINGS_META_KEY, max( 0, (int) $original_size - (int) filesize( $new_path ) ) );
         update_post_meta( $attachment_id, '_wp_attached_file', $new_rel_path );
 
@@ -549,7 +599,7 @@ class TIMU_WEBP_Support {
      */
     private static function restore_image_locked( $attachment_id ) {
         $fs          = self::init_fs();
-        $backup_path = get_post_meta( $attachment_id, self::BACKUP_META_KEY, true );
+        $backup_path = self::resolve_backup_path( get_post_meta( $attachment_id, self::BACKUP_META_KEY, true ) );
 
         if ( ! $fs || ! $backup_path || 'external' === $backup_path || ! $fs->exists( $backup_path ) ) {
             return false;
