@@ -5,11 +5,11 @@ Tags: webp, images, media, optimization, compression
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 0.6123
+Stable tag: 0.6126
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Non-destructive WebP conversion for Media Library images with safe backups and one-click restore.
+Non-destructive WebP/AVIF conversion for Media Library images with safe backups and one-click restore.
 
 == Description ==
 
@@ -18,24 +18,25 @@ WEBP Support by thisismyurl.com converts supported Media Library attachments (JP
 What this plugin actually ships:
 
 * Tools > WebP Support page with Optimize, Settings, Pending, and Managed Media sections.
-* Configurable WebP quality (0–100) and AJAX batch size (1–100).
+* Output Format setting: WebP (default), AVIF (Imagick + libheif required), or Both (AVIF primary + WebP companion via &lt;picture&gt;).
+* Quality Preset setting: Web (82), Print (95), Lossless (100), or Custom.
 * Per-format conversion toggles for JPG/JPEG, PNG, GIF, and BMP.
-* Non-destructive batch optimization with progress bar and cancel.
+* Non-destructive batch optimization with progress bar, savings display, and cancel.
+* Pending table shows per-image file sizes; Managed table shows bytes saved per image.
 * Single Restore button per managed image and a Restore All bulk action.
 * Status flags for missing files and items excluded by current settings.
 * Per-attachment lock so two operators or two browser tabs cannot race the same file.
 * Attachment metadata regenerated after each conversion or restoration.
 * Optional backup-folder cleanup on uninstall.
 * WP-CLI commands: `wp webp convert`, `wp webp restore`, `wp webp status`.
+* Localization support: French (Canada) translation included.
 
 What this plugin does NOT do (and never has — earlier readme drafts overstated the scope):
 
 * No tabbed UI, no ROI report, no analytics surface.
 * No optimize-on-upload, no background auto-optimize, no WP-Cron scheduler.
 * No EXIF / GPS / metadata stripping.
-* No render-time URL swap or output filter.
 * No outbound UTM tagging.
-* No search or pagination on the admin tables.
 * No theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
 
 How it works:
@@ -78,7 +79,18 @@ No. It uses WordPress image editors and works with either GD or Imagick.
 = Is there a WP-CLI interface? =
 Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status`.
 
+== Languages ==
+
+* French (Canada) — Christopher Ross
+
 == Changelog ==
+
+= 0.6126 =
+* Added Output Format setting: WebP (default), AVIF (Imagick + libheif), or Both (AVIF + WebP via picture element).
+* Added Quality Preset setting: Web (82), Print (95), Lossless (100), or Custom.
+* Added savings display: dashboard stats, Size column in Pending table, Saved column in Managed Media table.
+* Added i18n support and French (Canada) translation.
+* Fixed get_media_lists() to include image/avif in the mime type filter.
 
 = 0.6123 =
 * Removed the theme-image conversion feature — wrote to `wp-content/themes/` at runtime, which fails on managed hosts (WP Engine, Pantheon, Kinsta).

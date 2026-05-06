@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       WEBP Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
- * Description:       Non-destructive WebP conversion with backups, bulk processing, and one-click restoration.
- * Version:           0.6123
+ * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
+ * Version:           0.6126
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
@@ -20,15 +20,23 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+if ( ! defined( 'TIMU_WEBP_SUPPORT_DIR' ) ) {
+    define( 'TIMU_WEBP_SUPPORT_DIR', plugin_dir_path( __FILE__ ) );
+}
+if ( ! defined( 'TIMU_WEBP_SUPPORT_BASENAME' ) ) {
+    define( 'TIMU_WEBP_SUPPORT_BASENAME', plugin_basename( __FILE__ ) );
+}
+
 class TIMU_WEBP_Support {
 
-    const AJAX_NONCE_ACTION = 'timu_wswebp_nonce';
-    const BACKUP_META_KEY   = '_webp_original_path';
-    const SAVINGS_META_KEY  = '_webp_savings';
-    const OPTION_KEY        = 'timu_webp_support_options';
-    const SETTINGS_GROUP    = 'timu_webp_support_settings';
-    const LOCK_PREFIX       = 'timu_webp_lock_';
-    const LOCK_TTL_SECONDS  = 300;
+    const AJAX_NONCE_ACTION  = 'timu_wswebp_nonce';
+    const BACKUP_META_KEY    = '_webp_original_path';
+    const SAVINGS_META_KEY   = '_webp_savings';
+    const COMPANION_META_KEY = '_webp_companion_path';
+    const OPTION_KEY         = 'timu_webp_support_options';
+    const SETTINGS_GROUP     = 'timu_webp_support_settings';
+    const LOCK_PREFIX        = 'timu_webp_lock_';
+    const LOCK_TTL_SECONDS   = 300;
 
     /**
      * Initialize plugin hooks.
@@ -36,6 +44,7 @@ class TIMU_WEBP_Support {
      * @return void
      */
     public static function init() {
+        add_action( 'init', array( __CLASS__, 'load_textdomain' ) );
         add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ) );
         add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
@@ -43,10 +52,24 @@ class TIMU_WEBP_Support {
         add_action( 'wp_ajax_timu_wsprocess_batch', array( __CLASS__, 'ajax_process_batch' ) );
         add_action( 'wp_ajax_timu_wsrestore_single', array( __CLASS__, 'ajax_restore_single' ) );
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
+        add_filter( 'wp_get_attachment_image', array( __CLASS__, 'maybe_wrap_picture' ), 10, 5 );
 
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             \WP_CLI::add_command( 'webp', 'TIMU_WEBP_Support_CLI' );
         }
+    }
+
+    /**
+     * Load plugin translations.
+     *
+     * @return void
+     */
+    public static function load_textdomain() {
+        load_plugin_textdomain(
+            'thisismyurl-webp-support',
+            false,
+            dirname( TIMU_WEBP_SUPPORT_BASENAME ) . '/languages'
+        );
     }
 
     /**
@@ -126,10 +149,12 @@ class TIMU_WEBP_Support {
      */
     private static function get_default_options() {
         return array(
-            'quality'                   => 80,
-            'batch_size'                => 10,
-            'enabled_extensions'        => array( 'jpg', 'jpeg', 'png', 'gif', 'bmp' ),
-            'delete_backups_uninstall'  => 1,
+            'quality'                  => 80,
+            'quality_preset'           => 'web',
+            'output_format'            => 'webp',
+            'batch_size'               => 10,
+            'enabled_extensions'       => array( 'jpg', 'jpeg', 'png', 'gif', 'bmp' ),
+            'delete_backups_uninstall' => 1,
         );
     }
 
@@ -162,6 +187,18 @@ class TIMU_WEBP_Support {
         $quality = isset( $input['quality'] ) ? absint( $input['quality'] ) : $defaults['quality'];
         $quality = min( 100, max( 0, $quality ) );
 
+        $allowed_presets = array( 'web', 'print', 'lossless', 'custom' );
+        $quality_preset  = isset( $input['quality_preset'] ) ? sanitize_key( $input['quality_preset'] ) : $defaults['quality_preset'];
+        if ( ! in_array( $quality_preset, $allowed_presets, true ) ) {
+            $quality_preset = 'web';
+        }
+
+        $allowed_formats = array( 'webp', 'avif', 'both' );
+        $output_format   = isset( $input['output_format'] ) ? sanitize_key( $input['output_format'] ) : $defaults['output_format'];
+        if ( ! in_array( $output_format, $allowed_formats, true ) ) {
+            $output_format = 'webp';
+        }
+
         $batch_size = isset( $input['batch_size'] ) ? absint( $input['batch_size'] ) : $defaults['batch_size'];
         $batch_size = min( 100, max( 1, $batch_size ) );
 
@@ -174,6 +211,8 @@ class TIMU_WEBP_Support {
 
         return array(
             'quality'                  => $quality,
+            'quality_preset'           => $quality_preset,
+            'output_format'            => $output_format,
             'batch_size'               => $batch_size,
             'enabled_extensions'       => $enabled_extensions,
             'delete_backups_uninstall' => isset( $input['delete_backups_uninstall'] ) ? 1 : 0,
@@ -187,7 +226,54 @@ class TIMU_WEBP_Support {
      */
     private static function get_quality_setting() {
         $options = self::get_options();
-        return (int) $options['quality'];
+        $preset  = isset( $options['quality_preset'] ) ? $options['quality_preset'] : 'web';
+
+        switch ( $preset ) {
+            case 'print':
+                return 95;
+            case 'lossless':
+                return 100;
+            case 'custom':
+                return (int) $options['quality'];
+            case 'web':
+            default:
+                return 82;
+        }
+    }
+
+    /**
+     * Return the configured output format (webp|avif|both).
+     *
+     * @return string
+     */
+    private static function get_output_format() {
+        $options = self::get_options();
+        $format  = isset( $options['output_format'] ) ? $options['output_format'] : 'webp';
+
+        if ( ! in_array( $format, array( 'webp', 'avif', 'both' ), true ) ) {
+            $format = 'webp';
+        }
+
+        return $format;
+    }
+
+    /**
+     * Detect whether the current image-editor stack can save AVIF.
+     *
+     * Imagick is the only WP_Image_Editor backend that emits AVIF reliably as of
+     * WP 6.5+. We probe Imagick's compiled format list rather than trusting the
+     * mime map, because an Imagick build without `libheif` will list `avif` in
+     * mimes but fail at write time.
+     *
+     * @return bool
+     */
+    private static function supports_avif() {
+        if ( ! class_exists( 'Imagick' ) ) {
+            return false;
+        }
+
+        $formats = array_map( 'strtolower', Imagick::queryFormats( 'AVIF*' ) );
+        return in_array( 'avif', $formats, true );
     }
 
     /**
@@ -331,7 +417,7 @@ class TIMU_WEBP_Support {
     public static function get_media_lists() {
         $source_mimes  = array_values( self::get_extension_mime_map() );
         $enabled_mimes = self::get_enabled_source_mimes();
-        $mime_filter   = array_merge( $source_mimes, array( 'image/webp' ) );
+        $mime_filter   = array_merge( $source_mimes, array( 'image/webp', 'image/avif' ) );
 
         $pending  = array();
         $media    = array();
@@ -366,9 +452,9 @@ class TIMU_WEBP_Support {
                 $file      = get_attached_file( $post->ID );
                 $mime      = get_post_mime_type( $post->ID );
                 $orig_path = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
-                $is_webp   = ( 'image/webp' === $mime );
+                $is_converted = in_array( $mime, array( 'image/webp', 'image/avif' ), true );
 
-                if ( $is_webp && ! $orig_path ) {
+                if ( $is_converted && ! $orig_path ) {
                     update_post_meta( $post->ID, self::BACKUP_META_KEY, 'external' );
                     $orig_path = 'external';
                 }
@@ -379,7 +465,7 @@ class TIMU_WEBP_Support {
                     continue;
                 }
 
-                if ( $orig_path || $is_webp ) {
+                if ( $orig_path || $is_converted ) {
                     $media[] = $post;
                 } elseif ( in_array( $mime, $enabled_mimes, true ) ) {
                     $pending[] = $post;
@@ -485,12 +571,28 @@ class TIMU_WEBP_Support {
     /**
      * Convert an image to WebP and back up the original.
      *
+     * Backward-compatible alias retained because external callers (and the
+     * pre-0.6126 WP-CLI handler) reach for this name. New code should call
+     * `convert_image()`.
+     *
      * @param int $attachment_id Attachment ID.
-     * @param int $quality       WebP quality.
+     * @param int $quality       Encoder quality.
      *
      * @return true|WP_Error
      */
     public static function convert_to_webp( $attachment_id, $quality = null ) {
+        return self::convert_image( $attachment_id, $quality );
+    }
+
+    /**
+     * Convert an image to the configured output format(s) and back up the original.
+     *
+     * @param int      $attachment_id Attachment ID.
+     * @param int|null $quality       Encoder quality, or null to use plugin settings.
+     *
+     * @return true|WP_Error
+     */
+    public static function convert_image( $attachment_id, $quality = null ) {
         $attachment_id = (int) $attachment_id;
 
         if ( ! self::acquire_lock( $attachment_id ) ) {
@@ -498,7 +600,7 @@ class TIMU_WEBP_Support {
         }
 
         try {
-            return self::convert_to_webp_locked( $attachment_id, $quality );
+            return self::convert_image_locked( $attachment_id, $quality );
         } finally {
             self::release_lock( $attachment_id );
         }
@@ -508,11 +610,11 @@ class TIMU_WEBP_Support {
      * Inner conversion routine. Caller must hold the per-attachment lock.
      *
      * @param int      $attachment_id Attachment ID.
-     * @param int|null $quality       WebP quality, or null to use plugin settings.
+     * @param int|null $quality       Encoder quality, or null to use plugin settings.
      *
      * @return true|WP_Error
      */
-    private static function convert_to_webp_locked( $attachment_id, $quality = null ) {
+    private static function convert_image_locked( $attachment_id, $quality = null ) {
         $fs        = self::init_fs();
         $full_path = get_attached_file( $attachment_id );
 
@@ -534,10 +636,25 @@ class TIMU_WEBP_Support {
             return new WP_Error( 'mime', __( 'Unsupported format.', 'thisismyurl-webp-support' ) );
         }
 
+        $output_format = self::get_output_format();
+        $wants_avif    = ( 'avif' === $output_format || 'both' === $output_format );
+
+        if ( $wants_avif && ! self::supports_avif() ) {
+            if ( 'avif' === $output_format ) {
+                return new WP_Error( 'avif_unsupported', __( 'AVIF output requested but Imagick is missing AVIF support on this server.', 'thisismyurl-webp-support' ) );
+            }
+            // Both → fall back to WebP-only when AVIF isn't available.
+            $output_format = 'webp';
+            $wants_avif    = false;
+        }
+
+        $primary_ext  = $wants_avif ? 'avif' : 'webp';
+        $primary_mime = $wants_avif ? 'image/avif' : 'image/webp';
+
         $original_size = filesize( $full_path );
-        $new_path      = self::swap_extension( $full_path, 'webp' );
+        $new_path      = self::swap_extension( $full_path, $primary_ext );
         $rel_path      = get_post_meta( $attachment_id, '_wp_attached_file', true );
-        $new_rel_path  = self::swap_extension( $rel_path, 'webp' );
+        $new_rel_path  = self::swap_extension( $rel_path, $primary_ext );
 
         $editor = wp_get_image_editor( $full_path );
         if ( is_wp_error( $editor ) ) {
@@ -548,9 +665,14 @@ class TIMU_WEBP_Support {
             $editor->set_quality( $quality );
         }
 
-        $saved = $editor->save( $new_path, 'image/webp' );
+        $saved = $editor->save( $new_path, $primary_mime );
         if ( is_wp_error( $saved ) || ! $fs->exists( $new_path ) ) {
-            return new WP_Error( 'webp', __( 'Failed to create WebP file.', 'thisismyurl-webp-support' ) );
+            return new WP_Error(
+                'encode',
+                $wants_avif
+                    ? __( 'Failed to create AVIF file.', 'thisismyurl-webp-support' )
+                    : __( 'Failed to create WebP file.', 'thisismyurl-webp-support' )
+            );
         }
 
         $backup_dir = self::get_backup_dir( $attachment_id );
@@ -565,14 +687,38 @@ class TIMU_WEBP_Support {
             return new WP_Error( 'move', __( 'Failed to archive original file.', 'thisismyurl-webp-support' ) );
         }
 
+        // Companion WebP for `both` mode — created from the archived original so
+        // we re-encode the source pixels, not the freshly-compressed AVIF.
+        if ( 'both' === $output_format ) {
+            $companion_path   = self::swap_extension( $new_path, 'webp' );
+            $companion_editor = wp_get_image_editor( $backup_path );
+
+            if ( ! is_wp_error( $companion_editor ) ) {
+                if ( method_exists( $companion_editor, 'set_quality' ) ) {
+                    $companion_editor->set_quality( $quality );
+                }
+                $companion_saved = $companion_editor->save( $companion_path, 'image/webp' );
+
+                if ( ! is_wp_error( $companion_saved ) && $fs->exists( $companion_path ) ) {
+                    update_post_meta(
+                        $attachment_id,
+                        self::COMPANION_META_KEY,
+                        self::relativize_backup_path( $companion_path )
+                    );
+                }
+            }
+            // If companion creation fails we keep the AVIF and move on — the
+            // primary conversion already succeeded.
+        }
+
         update_post_meta( $attachment_id, self::BACKUP_META_KEY, self::relativize_backup_path( $backup_path ) );
         update_post_meta( $attachment_id, self::SAVINGS_META_KEY, max( 0, (int) $original_size - (int) filesize( $new_path ) ) );
         update_post_meta( $attachment_id, '_wp_attached_file', $new_rel_path );
 
         wp_update_post(
             array(
-                'ID'           => $attachment_id,
-                'post_mime_type' => 'image/webp',
+                'ID'             => $attachment_id,
+                'post_mime_type' => $primary_mime,
             )
         );
 
@@ -633,6 +779,15 @@ class TIMU_WEBP_Support {
             $fs->delete( $current_webp );
         }
 
+        // Drop the companion file from `both` mode, if any.
+        $companion_rel = get_post_meta( $attachment_id, self::COMPANION_META_KEY, true );
+        if ( $companion_rel ) {
+            $companion_abs = self::resolve_backup_path( $companion_rel );
+            if ( $companion_abs && $fs->exists( $companion_abs ) ) {
+                $fs->delete( $companion_abs );
+            }
+        }
+
         $rel_path = get_post_meta( $attachment_id, '_wp_attached_file', true );
         $new_rel  = self::swap_extension( $rel_path, $extension );
         update_post_meta( $attachment_id, '_wp_attached_file', $new_rel );
@@ -642,7 +797,7 @@ class TIMU_WEBP_Support {
 
         wp_update_post(
             array(
-                'ID'           => $attachment_id,
+                'ID'             => $attachment_id,
                 'post_mime_type' => $mime,
             )
         );
@@ -651,8 +806,48 @@ class TIMU_WEBP_Support {
 
         delete_post_meta( $attachment_id, self::BACKUP_META_KEY );
         delete_post_meta( $attachment_id, self::SAVINGS_META_KEY );
+        delete_post_meta( $attachment_id, self::COMPANION_META_KEY );
 
         return true;
+    }
+
+    /**
+     * Wrap an attachment image tag in a <picture> element when both AVIF and
+     * a WebP companion exist on disk. Browsers without AVIF support fall back
+     * to the WebP source; the bare <img> fallback covers everything else.
+     *
+     * @param string       $html          Original image markup.
+     * @param int          $attachment_id Attachment ID.
+     * @param string|array $size          Requested size.
+     * @param bool         $icon          Whether the image is treated as an icon.
+     * @param array|string $attr          Image attributes.
+     *
+     * @return string
+     */
+    public static function maybe_wrap_picture( $html, $attachment_id, $size, $icon, $attr ) {
+        $companion = get_post_meta( $attachment_id, self::COMPANION_META_KEY, true );
+        if ( ! $companion ) {
+            return $html;
+        }
+
+        $companion_abs = self::resolve_backup_path( $companion );
+        if ( ! $companion_abs || ! file_exists( $companion_abs ) ) {
+            return $html;
+        }
+
+        $upload_dir    = wp_upload_dir();
+        $companion_url = trailingslashit( $upload_dir['baseurl'] ) . ltrim( (string) $companion, '/\\' );
+        $avif_url      = wp_get_attachment_url( $attachment_id );
+
+        if ( ! $avif_url ) {
+            return $html;
+        }
+
+        return '<picture>' .
+            '<source srcset="' . esc_url( $avif_url ) . '" type="image/avif" />' .
+            '<source srcset="' . esc_url( $companion_url ) . '" type="image/webp" />' .
+            $html .
+            '</picture>';
     }
 
     /**
@@ -780,6 +975,24 @@ class TIMU_WEBP_Support {
             }
         }
 
+        // Savings stats (issue #23).
+        $pending_bytes         = 0;
+        foreach ( $lists['pending'] as $post ) {
+            $f = get_attached_file( $post->ID );
+            if ( $f && file_exists( $f ) ) {
+                $pending_bytes += (int) filesize( $f );
+            }
+        }
+        $managed_savings       = 0;
+        $managed_savings_count = 0;
+        foreach ( $lists['media'] as $post ) {
+            $sv = (int) get_post_meta( $post->ID, self::SAVINGS_META_KEY, true );
+            if ( $sv > 0 ) {
+                $managed_savings += $sv;
+                ++$managed_savings_count;
+            }
+        }
+
         wp_add_inline_script(
             'timu-webp-support-admin',
             'window.TIMUWebPSupportData = ' . wp_json_encode(
@@ -818,7 +1031,7 @@ class TIMU_WEBP_Support {
                     ?>
                 </span>
             </h1>
-            <p><?php esc_html_e( 'Non-destructive WebP conversion with backups and one-click restoration.', 'thisismyurl-webp-support' ); ?></p>
+            <p><?php esc_html_e( 'Non-destructive WebP/AVIF conversion with backups and one-click restoration.', 'thisismyurl-webp-support' ); ?></p>
 
             <div id="poststuff">
                 <div id="post-body" class="metabox-holder columns-2">
@@ -840,6 +1053,31 @@ class TIMU_WEBP_Support {
                                         <div id="fwo-progress-bar" style="background:#2271b1;height:100%;width:0%;transition:width 0.2s;"></div>
                                         <div id="fwo-progress-text" style="position:absolute;width:100%;text-align:center;top:0;line-height:30px;font-weight:bold;color:#fff;mix-blend-mode:difference;">0%</div>
                                     </div>
+                                    <?php if ( $pending_bytes > 0 || $managed_savings > 0 ) : ?>
+                                    <p class="description" style="margin-top:14px;">
+                                        <?php
+                                        if ( $pending_bytes > 0 ) {
+                                            printf(
+                                                /* translators: 1: number of files, 2: total size formatted */
+                                                esc_html__( 'Pending: %1$d file(s), %2$s total.', 'thisismyurl-webp-support' ),
+                                                count( $lists['pending'] ),
+                                                esc_html( size_format( $pending_bytes, 2 ) )
+                                            );
+                                        }
+                                        if ( $managed_savings > 0 ) {
+                                            if ( $pending_bytes > 0 ) {
+                                                echo '&ensp;';
+                                            }
+                                            printf(
+                                                /* translators: 1: savings size formatted, 2: image count */
+                                                esc_html__( 'Saved: %1$s across %2$d image(s).', 'thisismyurl-webp-support' ),
+                                                esc_html( size_format( $managed_savings, 2 ) ),
+                                                $managed_savings_count
+                                            );
+                                        }
+                                        ?>
+                                    </p>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -849,12 +1087,64 @@ class TIMU_WEBP_Support {
                             <div class="inside">
                                 <form method="post" action="options.php">
                                     <?php settings_fields( self::SETTINGS_GROUP ); ?>
+                                    <?php $avif_ok = self::supports_avif(); ?>
                                     <table class="form-table" role="presentation">
                                         <tr>
-                                            <th scope="row"><label for="timu-quality"><?php esc_html_e( 'WebP Quality', 'thisismyurl-webp-support' ); ?></label></th>
+                                            <th scope="row"><?php esc_html_e( 'Output Format', 'thisismyurl-webp-support' ); ?></th>
                                             <td>
-                                                <input id="timu-quality" type="number" min="0" max="100" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]" value="<?php echo esc_attr( $options['quality'] ); ?>" class="small-text" />
-                                                <p class="description"><?php esc_html_e( 'Controls compression quality from 0 (smallest) to 100 (highest quality).', 'thisismyurl-webp-support' ); ?></p>
+                                                <?php
+                                                $output_presets = array(
+                                                    'webp' => __( 'WebP (recommended)', 'thisismyurl-webp-support' ),
+                                                    'avif' => __( 'AVIF (Imagick only)', 'thisismyurl-webp-support' ),
+                                                    'both' => __( 'Both — AVIF primary + WebP companion via &lt;picture&gt;', 'thisismyurl-webp-support' ),
+                                                );
+                                                $cur_format = isset( $options['output_format'] ) ? $options['output_format'] : 'webp';
+                                                foreach ( $output_presets as $val => $label ) :
+                                                    $needs_avif = ( 'webp' !== $val );
+                                                ?>
+                                                    <label style="display:block;margin-bottom:4px;">
+                                                        <input type="radio"
+                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[output_format]"
+                                                            value="<?php echo esc_attr( $val ); ?>"
+                                                            <?php checked( $cur_format, $val ); ?>
+                                                            <?php disabled( $needs_avif && ! $avif_ok ); ?> />
+                                                        <?php echo wp_kses( $label, array() ); ?>
+                                                        <?php if ( $needs_avif && ! $avif_ok ) : ?>
+                                                            <em style="color:#d63638;">&mdash; <?php esc_html_e( 'AVIF unavailable: Imagick not installed or missing libheif', 'thisismyurl-webp-support' ); ?></em>
+                                                        <?php endif; ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Quality Preset', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <?php
+                                                $quality_presets = array(
+                                                    'web'      => __( 'Web (82) — balanced size/quality', 'thisismyurl-webp-support' ),
+                                                    'print'    => __( 'Print (95) — high fidelity', 'thisismyurl-webp-support' ),
+                                                    'lossless' => __( 'Lossless (100)', 'thisismyurl-webp-support' ),
+                                                    'custom'   => __( 'Custom', 'thisismyurl-webp-support' ),
+                                                );
+                                                $cur_preset = isset( $options['quality_preset'] ) ? $options['quality_preset'] : 'web';
+                                                foreach ( $quality_presets as $val => $label ) :
+                                                ?>
+                                                    <label style="display:block;margin-bottom:4px;">
+                                                        <input type="radio"
+                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality_preset]"
+                                                            value="<?php echo esc_attr( $val ); ?>"
+                                                            <?php checked( $cur_preset, $val ); ?>
+                                                            class="timu-preset-radio" />
+                                                        <?php echo esc_html( $label ); ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
+                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0–100):', 'thisismyurl-webp-support' ); ?></label>
+                                                    <input id="timu-quality" type="number" min="0" max="100"
+                                                        name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
+                                                        value="<?php echo esc_attr( $options['quality'] ); ?>"
+                                                        class="small-text" style="margin-left:6px;" />
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr>
@@ -901,19 +1191,25 @@ class TIMU_WEBP_Support {
                                             <th><?php esc_html_e( 'Preview', 'thisismyurl-webp-support' ); ?></th>
                                             <th><?php esc_html_e( 'ID', 'thisismyurl-webp-support' ); ?></th>
                                             <th><?php esc_html_e( 'File Name', 'thisismyurl-webp-support' ); ?></th>
+                                            <th><?php esc_html_e( 'Size', 'thisismyurl-webp-support' ); ?></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php if ( ! empty( $lists['pending'] ) ) : ?>
                                             <?php foreach ( $lists['pending'] as $post ) : ?>
+                                                <?php
+                                                $pf   = get_attached_file( $post->ID );
+                                                $psz  = ( $pf && file_exists( $pf ) ) ? size_format( (int) filesize( $pf ), 1 ) : '—';
+                                                ?>
                                                 <tr id="fwo-row-<?php echo esc_attr( $post->ID ); ?>">
                                                     <td><?php echo wp_kses_post( wp_get_attachment_image( $post->ID, array( 50, 50 ) ) ); ?></td>
                                                     <td>#<?php echo esc_html( $post->ID ); ?></td>
-                                                    <td><?php echo esc_html( basename( (string) get_attached_file( $post->ID ) ) ); ?></td>
+                                                    <td><?php echo esc_html( basename( (string) $pf ) ); ?></td>
+                                                    <td><?php echo esc_html( $psz ); ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else : ?>
-                                            <tr class="no-images"><td colspan="3"><?php esc_html_e( 'All images optimized!', 'thisismyurl-webp-support' ); ?></td></tr>
+                                            <tr class="no-images"><td colspan="4"><?php esc_html_e( 'All images optimized!', 'thisismyurl-webp-support' ); ?></td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -929,19 +1225,23 @@ class TIMU_WEBP_Support {
                                             <th><?php esc_html_e( 'Preview', 'thisismyurl-webp-support' ); ?></th>
                                             <th><?php esc_html_e( 'ID', 'thisismyurl-webp-support' ); ?></th>
                                             <th><?php esc_html_e( 'File Name', 'thisismyurl-webp-support' ); ?></th>
+                                            <th><?php esc_html_e( 'Saved', 'thisismyurl-webp-support' ); ?></th>
                                             <th><?php esc_html_e( 'Action', 'thisismyurl-webp-support' ); ?></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ( $lists['media'] as $post ) : ?>
                                             <?php
-                                            $orig   = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
-                                            $status = isset( $post->timu_wsstatus ) ? $post->timu_wsstatus : '';
+                                            $orig     = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
+                                            $status   = isset( $post->timu_wsstatus ) ? $post->timu_wsstatus : '';
+                                            $savings  = (int) get_post_meta( $post->ID, self::SAVINGS_META_KEY, true );
+                                            $saved_sz = $savings > 0 ? size_format( $savings, 1 ) : '—';
                                             ?>
                                             <tr id="fwo-media-row-<?php echo esc_attr( $post->ID ); ?>">
                                                 <td><?php echo wp_kses_post( wp_get_attachment_image( $post->ID, array( 50, 50 ) ) ); ?></td>
                                                 <td>#<?php echo esc_html( $post->ID ); ?></td>
                                                 <td><?php echo esc_html( basename( (string) get_attached_file( $post->ID ) ) ); ?></td>
+                                                <td><?php echo esc_html( $saved_sz ); ?></td>
                                                 <td>
                                                     <?php if ( 'missing' === $status ) : ?>
                                                         <span style="color:#d63638;"><?php esc_html_e( 'File Missing', 'thisismyurl-webp-support' ); ?></span>
@@ -968,7 +1268,7 @@ class TIMU_WEBP_Support {
                         <div class="postbox">
                             <h2 class="hndle"><span><?php esc_html_e( 'Documentation', 'thisismyurl-webp-support' ); ?></span></h2>
                             <div class="inside">
-                                <p><?php esc_html_e( 'This plugin converts JPEG, PNG, GIF, and BMP images into WebP using the WordPress image editor stack (GD or Imagick). Originals are moved to a backup directory and can be restored any time.', 'thisismyurl-webp-support' ); ?></p>
+                                <p><?php esc_html_e( 'This plugin converts JPEG, PNG, GIF, and BMP images into WebP or AVIF using the WordPress image editor stack (GD or Imagick). Originals are moved to a backup directory and can be restored any time.', 'thisismyurl-webp-support' ); ?></p>
                                 <hr />
                                 <?php if ( ! empty( $restorable ) ) : ?>
                                     <p><strong><?php esc_html_e( 'Bulk Actions', 'thisismyurl-webp-support' ); ?></strong></p>

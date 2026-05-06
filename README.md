@@ -2,21 +2,24 @@
 
 [![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml) [![WordPress Tested](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
 
-Current version: **0.6123**
+Current version: **0.6126**
 
-A WordPress plugin that converts Media Library attachments (JPEG, PNG, GIF, BMP) to WebP non-destructively, with safe backups and one-click restore. Built for site owners who want WebP without giving up the ability to roll back.
+A WordPress plugin that converts Media Library attachments (JPEG, PNG, GIF, BMP) to WebP or AVIF non-destructively, with safe backups and one-click restore. Built for site owners who want modern image formats without giving up the ability to roll back.
 
 ## What It Does
 
 - Tools > WebP Support page with Optimize, Settings, Pending, and Managed Media sections.
-- Configurable WebP quality (0–100) and AJAX batch size (1–100).
+- **Output Format** setting: WebP (default), AVIF (requires Imagick with libheif), or Both (AVIF primary + WebP companion via `<picture>` for format negotiation).
+- **Quality Preset** setting: Web (82), Print (95), Lossless (100), or Custom.
 - Per-format conversion toggles for JPG/JPEG, PNG, GIF, and BMP.
-- Non-destructive batch conversion with progress bar and a working Cancel.
+- Non-destructive batch conversion with progress bar, savings stats, and a working Cancel.
+- Pending table shows per-image file sizes; Managed Media table shows bytes saved.
 - Single-image Restore plus a Restore All Originals bulk action.
 - Per-attachment lock so two operators (or two browser tabs) cannot race the same file.
 - Attachment metadata regenerated after each conversion or restoration.
 - Optional backup-folder cleanup on uninstall.
 - WP-CLI: `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status`.
+- French (Canada) translation included (`fr_CA`).
 
 ## What It Does Not Do
 
@@ -25,9 +28,7 @@ The 0.6115 README listed several features that were never in the code. Those cla
 - A tabbed admin UI or ROI report.
 - Optimize-on-upload, background auto-optimize, or WP-Cron scheduling.
 - EXIF / GPS / metadata stripping.
-- Render-time URL swapping or any output filter.
 - Outbound UTM tagging.
-- Search or pagination on the admin tables.
 - Theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
 
 If you need any of those, this is not the plugin for you. Open an issue if you'd like one of them added.

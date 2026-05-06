@@ -5,6 +5,21 @@ All notable changes to **WEBP Support by thisismyurl.com** are documented here.
 The version scheme is `x.Yddd` — `x` = release class (`0` = pre-release, `1` = full),
 `Y` = last digit of the year, `ddd` = Julian day. So `0.6123` = 2026 Julian day 123.
 
+## 0.6126 — 2026-05-06
+
+### Added
+
+- **Quality presets** (`#25`): replace the single quality integer with named profiles — Web (82), Print (95), Lossless (100), and Custom. The custom number input is shown/hidden dynamically in the admin UI.
+- **Savings display** (`#23`): the Optimization Dashboard now shows pending file count and total size, plus cumulative bytes saved across already-converted images. Pending table gains a Size column; Managed Media table gains a Saved column.
+- **AVIF output format** (`#14`, `#19`): new "Output Format" setting — WebP (default, backwards-compatible), AVIF (requires Imagick with libheif), or Both. "Both" produces an AVIF primary file plus a WebP companion and wraps `wp_get_attachment_image` output in a `<picture>` element for format negotiation. If AVIF is unavailable at the server level the option is disabled with an inline notice.
+- **i18n** (`#2`): `load_plugin_textdomain()` wired on the `init` hook; `TIMU_WEBP_SUPPORT_DIR` and `TIMU_WEBP_SUPPORT_BASENAME` constants defined. French (Canada) `.po` translation committed to `languages/`. Run `msgfmt languages/thisismyurl-webp-support-fr_CA.po -o languages/thisismyurl-webp-support-fr_CA.mo` to compile the binary.
+
+### Fixed
+
+- `get_media_lists()` mime filter now includes `image/avif` alongside `image/webp`, so AVIF attachments appear in the Managed Media table after conversion.
+- `$is_webp` variable renamed to `$is_converted` and updated to cover both `image/webp` and `image/avif`.
+- `convert_to_webp()` retained as a backwards-compatible alias for external callers; internally delegates to `convert_image()`.
+
 ## 0.6123 — 2026-05-03
 
 Audit-batch release closing every open `audit-finding` issue from the 2026-05-03 cross-plugin audit.

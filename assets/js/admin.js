@@ -320,4 +320,16 @@ jQuery( function ( $ ) {
         stopBusyIndicator();
         window.location.reload();
     } );
+
+    /* ── Quality preset toggle ──────────────────────────────── */
+    ( function () {
+        var custom = document.getElementById( 'timu-custom-quality' );
+        if ( ! custom ) { return; }
+        document.querySelectorAll( '.timu-preset-radio' ).forEach( function ( radio ) {
+            radio.addEventListener( 'change', function () {
+                custom.style.display = 'custom' === this.value ? '' : 'none';
+            } );
+        } );
+    }() );
+
 } );
