@@ -80,3 +80,8 @@ See [CHANGELOG.md](CHANGELOG.md).
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE).
+
+
+---
+*This project follows the [10 Core Pillars](PILLARS.md). Support quality work [here](https://github.com/sponsors/thisismyurl).*
+

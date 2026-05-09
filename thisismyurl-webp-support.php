@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Plugin Name:       WEBP Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
@@ -489,7 +489,7 @@ class TIMU_WEBP_Support {
      * Resolve a stored backup-path meta value to an absolute filesystem path.
      *
      * New conversions (0.6123+) write the path relative to `uploads/basedir/`
-     * so dev↔prod database copies and host migrations don't orphan backups.
+     * so devâ†”prod database copies and host migrations don't orphan backups.
      * Legacy values written by earlier versions stored an absolute path; this
      * reader honours both shapes by leaf-checking for the absolute marker
      * before treating the value as relative.
@@ -506,7 +506,7 @@ class TIMU_WEBP_Support {
             return (string) $stored;
         }
 
-        // Legacy absolute path — Unix `/foo`, Windows `C:\foo`, or UNC `\\server\foo`.
+        // Legacy absolute path â€” Unix `/foo`, Windows `C:\foo`, or UNC `\\server\foo`.
         if ( '/' === $stored[0] || '\\' === $stored[0] || ( isset( $stored[1] ) && ':' === $stored[1] ) ) {
             return $stored;
         }
@@ -643,7 +643,7 @@ class TIMU_WEBP_Support {
             if ( 'avif' === $output_format ) {
                 return new WP_Error( 'avif_unsupported', __( 'AVIF output requested but Imagick is missing AVIF support on this server.', 'thisismyurl-webp-support' ) );
             }
-            // Both → fall back to WebP-only when AVIF isn't available.
+            // Both â†’ fall back to WebP-only when AVIF isn't available.
             $output_format = 'webp';
             $wants_avif    = false;
         }
@@ -687,7 +687,7 @@ class TIMU_WEBP_Support {
             return new WP_Error( 'move', __( 'Failed to archive original file.', 'thisismyurl-webp-support' ) );
         }
 
-        // Companion WebP for `both` mode — created from the archived original so
+        // Companion WebP for `both` mode â€” created from the archived original so
         // we re-encode the source pixels, not the freshly-compressed AVIF.
         if ( 'both' === $output_format ) {
             $companion_path   = self::swap_extension( $new_path, 'webp' );
@@ -707,7 +707,7 @@ class TIMU_WEBP_Support {
                     );
                 }
             }
-            // If companion creation fails we keep the AVIF and move on — the
+            // If companion creation fails we keep the AVIF and move on â€” the
             // primary conversion already succeeded.
         }
 
@@ -1096,7 +1096,7 @@ class TIMU_WEBP_Support {
                                                 $output_presets = array(
                                                     'webp' => __( 'WebP (recommended)', 'thisismyurl-webp-support' ),
                                                     'avif' => __( 'AVIF (Imagick only)', 'thisismyurl-webp-support' ),
-                                                    'both' => __( 'Both — AVIF primary + WebP companion via &lt;picture&gt;', 'thisismyurl-webp-support' ),
+                                                    'both' => __( 'Both â€” AVIF primary + WebP companion via &lt;picture&gt;', 'thisismyurl-webp-support' ),
                                                 );
                                                 $cur_format = isset( $options['output_format'] ) ? $options['output_format'] : 'webp';
                                                 foreach ( $output_presets as $val => $label ) :
@@ -1121,8 +1121,8 @@ class TIMU_WEBP_Support {
                                             <td>
                                                 <?php
                                                 $quality_presets = array(
-                                                    'web'      => __( 'Web (82) — balanced size/quality', 'thisismyurl-webp-support' ),
-                                                    'print'    => __( 'Print (95) — high fidelity', 'thisismyurl-webp-support' ),
+                                                    'web'      => __( 'Web (82) â€” balanced size/quality', 'thisismyurl-webp-support' ),
+                                                    'print'    => __( 'Print (95) â€” high fidelity', 'thisismyurl-webp-support' ),
                                                     'lossless' => __( 'Lossless (100)', 'thisismyurl-webp-support' ),
                                                     'custom'   => __( 'Custom', 'thisismyurl-webp-support' ),
                                                 );
@@ -1139,7 +1139,7 @@ class TIMU_WEBP_Support {
                                                     </label>
                                                 <?php endforeach; ?>
                                                 <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
-                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0–100):', 'thisismyurl-webp-support' ); ?></label>
+                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0â€“100):', 'thisismyurl-webp-support' ); ?></label>
                                                     <input id="timu-quality" type="number" min="0" max="100"
                                                         name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
                                                         value="<?php echo esc_attr( $options['quality'] ); ?>"
@@ -1158,7 +1158,7 @@ class TIMU_WEBP_Support {
                                             <th scope="row"><?php esc_html_e( 'Enable Conversion For', 'thisismyurl-webp-support' ); ?></th>
                                             <td>
                                                 <?php foreach ( self::get_extension_mime_map() as $extension => $mime ) : ?>
-                                                    <label style="display:inline-block;min-width:120px;margin-right:12px;">
+                                                    <label style="display:inline-block;min-width:100%;margin-right:12px;">
                                                         <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled_extensions][]" value="<?php echo esc_attr( $extension ); ?>" <?php checked( in_array( $extension, (array) $options['enabled_extensions'], true ) ); ?> />
                                                         <?php echo esc_html( strtoupper( $extension ) . ' (' . $mime . ')' ); ?>
                                                     </label>
@@ -1199,7 +1199,7 @@ class TIMU_WEBP_Support {
                                             <?php foreach ( $lists['pending'] as $post ) : ?>
                                                 <?php
                                                 $pf   = get_attached_file( $post->ID );
-                                                $psz  = ( $pf && file_exists( $pf ) ) ? size_format( (int) filesize( $pf ), 1 ) : '—';
+                                                $psz  = ( $pf && file_exists( $pf ) ) ? size_format( (int) filesize( $pf ), 1 ) : 'â€”';
                                                 ?>
                                                 <tr id="fwo-row-<?php echo esc_attr( $post->ID ); ?>">
                                                     <td><?php echo wp_kses_post( wp_get_attachment_image( $post->ID, array( 50, 50 ) ) ); ?></td>
@@ -1235,7 +1235,7 @@ class TIMU_WEBP_Support {
                                             $orig     = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
                                             $status   = isset( $post->timu_wsstatus ) ? $post->timu_wsstatus : '';
                                             $savings  = (int) get_post_meta( $post->ID, self::SAVINGS_META_KEY, true );
-                                            $saved_sz = $savings > 0 ? size_format( $savings, 1 ) : '—';
+                                            $saved_sz = $savings > 0 ? size_format( $savings, 1 ) : 'â€”';
                                             ?>
                                             <tr id="fwo-media-row-<?php echo esc_attr( $post->ID ); ?>">
                                                 <td><?php echo wp_kses_post( wp_get_attachment_image( $post->ID, array( 50, 50 ) ) ); ?></td>
@@ -1302,7 +1302,7 @@ class TIMU_WEBP_Support {
  * Minimal direct-PHP filesystem shim used when WP_Filesystem refuses to
  * initialise (typically a host that wants FTP/SSH credentials and gives us
  * no UI to surface them). Implements the methods this plugin actually calls
- * — `exists`, `delete`, `move` — with the same return shapes WP_Filesystem
+ * â€” `exists`, `delete`, `move` â€” with the same return shapes WP_Filesystem
  * uses, so callers don't need to branch on which backend they got.
  *
  * Only acceptable here because every entry point that touches the filesystem
