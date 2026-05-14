@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Plugin Name:       WEBP Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
