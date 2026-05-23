@@ -1,11 +1,11 @@
 === WEBP Support by thisismyurl.com ===
 Contributors: thisismyurl
-Donate link: https://thisismyurl.com/donate/
+Donate link: https://github.com/sponsors/thisismyurl
 Tags: webp, images, media, optimization, compression
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 0.6126
+Stable tag: 1.6143
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,10 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 * French (Canada) — Christopher Ross
 
 == Changelog ==
+
+= 1.6143 =
+* First full release (class 1). The 0.6xxx line was pre-release on the `x.Yddd` scheme.
+* Standardized the donation link to GitHub Sponsors.
 
 = 0.6126 =
 * Added Output Format setting: WebP (default), AVIF (Imagick + libheif), or Both (AVIF + WebP via picture element).
