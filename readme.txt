@@ -1,4 +1,4 @@
-=== WEBP Support by thisismyurl.com ===
+=== This Is My URL - WEBP Support ===
 Contributors: thisismyurl
 Donate link: https://github.com/sponsors/thisismyurl
 Tags: webp, images, media, optimization, compression

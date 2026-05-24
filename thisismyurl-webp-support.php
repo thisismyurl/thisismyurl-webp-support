@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       WEBP Support by thisismyurl.com
+ * Plugin Name:       This Is My URL - WEBP Support
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
  * Version:           1.6143
@@ -127,7 +127,7 @@ class TIMU_WEBP_Support {
     }
 
     /**
-     * Add Settings and Donate links to plugin row actions.
+     * Add Settings and Sponsor links to plugin row actions.
      *
      * @param array $links Existing plugin row links.
      *
@@ -136,7 +136,7 @@ class TIMU_WEBP_Support {
     public static function add_plugin_action_links( $links ) {
         $custom_links = array(
             '<a href="' . esc_url( admin_url( 'tools.php?page=webp-optimizer' ) ) . '">' . esc_html__( 'Settings', 'thisismyurl-webp-support' ) . '</a>',
-            '<a href="' . esc_url( 'https://thisismyurl.com/donate/' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Donate', 'thisismyurl-webp-support' ) . '</a>',
+            '<a href="' . esc_url( 'https://github.com/sponsors/thisismyurl' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Sponsor', 'thisismyurl-webp-support' ) . '</a>',
         );
 
         return array_merge( $custom_links, $links );
@@ -1287,7 +1287,7 @@ class TIMU_WEBP_Support {
                                     );
                                     ?>
                                 </p>
-                                <p><a href="<?php echo esc_url( 'https://thisismyurl.com/donate/' ); ?>" class="button button-secondary" target="_blank" rel="noopener noreferrer" style="width:100%;text-align:center;"><?php esc_html_e( 'Donate to Development', 'thisismyurl-webp-support' ); ?></a></p>
+                                <p><a href="<?php echo esc_url( 'https://github.com/sponsors/thisismyurl' ); ?>" class="button button-secondary" target="_blank" rel="noopener noreferrer" style="width:100%;text-align:center;"><?php esc_html_e( 'Sponsor development', 'thisismyurl-webp-support' ); ?></a></p>
                             </div>
                         </div>
                     </div>
