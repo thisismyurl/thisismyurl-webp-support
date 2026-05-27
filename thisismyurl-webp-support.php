@@ -3,7 +3,7 @@
  * Plugin Name:       This Is My URL - WEBP Support
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
- * Version:           1.6143
+ * Version:           1.6147
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
