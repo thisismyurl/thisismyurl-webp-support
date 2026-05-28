@@ -1393,6 +1393,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
     require_once plugin_dir_path( __FILE__ ) . 'includes/class-timu-webp-cli.php';
 }
 
+require_once plugin_dir_path( __FILE__ ) . 'includes/abilities.php';
+
 TIMU_WEBP_Support::init();
 
 require_once plugin_dir_path( __FILE__ ) . 'github-updater.php';

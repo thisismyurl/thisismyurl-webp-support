@@ -85,6 +85,9 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 
 == Changelog ==
 
+= 1.6149 =
+* Added WordPress 7.0 Abilities API support: `thisismyurl-webp-support/convert` (batch conversion) and `thisismyurl-webp-support/restore` (restore originals from backups), both guarded by the `manage_options` capability.
+
 = 1.6147 =
 * Unified plugin versioning to the x.Yddd calendar-version scheme.
 * Confirmed compatibility with WordPress 7.0.
