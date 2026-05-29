@@ -24,5 +24,6 @@ if ( ! empty( $options['delete_backups_uninstall'] ) && $wp_filesystem && $wp_fi
 
 delete_metadata( 'post', 0, '_webp_original_path', '', true );
 delete_metadata( 'post', 0, '_webp_savings', '', true );
+delete_metadata( 'post', 0, '_webp_companion_path', '', true );
 delete_option( 'timu_webp_support_options' );
 wp_cache_flush();

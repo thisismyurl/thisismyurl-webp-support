@@ -85,6 +85,9 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 
 == Changelog ==
 
+= 1.6151 =
+* Uninstall: the companion-path meta (`_webp_companion_path`) written for "Both" (AVIF + WebP) attachments is now removed on uninstall, alongside the original-path and savings meta, so no orphan post meta survives.
+
 = 1.6150 =
 * Accessibility (WCAG 2.2 AA): the optimization progress bar now exposes `role="progressbar"` with `aria-valuenow/min/max` and an accessible label, and the admin script keeps `aria-valuenow` in sync with the visual width.
 * Accessibility: added a polite `role="status"` live region so screen readers announce batch progress, results, and completion.
