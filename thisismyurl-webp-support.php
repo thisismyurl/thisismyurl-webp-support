@@ -1049,10 +1049,17 @@ class TIMU_WEBP_Support {
                                         </button>
                                     </div>
 
-                                    <div id="fwo-progress-container" style="display:none;margin-top:20px;background:#f0f0f1;height:30px;position:relative;border-radius:4px;overflow:hidden;border:1px solid #c3c4c7;">
+                                    <div id="fwo-progress-container"
+                                        role="progressbar"
+                                        aria-valuenow="0"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        aria-label="<?php esc_attr_e( 'Batch optimization progress', 'thisismyurl-webp-support' ); ?>"
+                                        style="display:none;margin-top:20px;background:#f0f0f1;height:30px;position:relative;border-radius:4px;overflow:hidden;border:1px solid #c3c4c7;">
                                         <div id="fwo-progress-bar" style="background:#2271b1;height:100%;width:0%;transition:width 0.2s;"></div>
                                         <div id="fwo-progress-text" style="position:absolute;width:100%;text-align:center;top:0;line-height:30px;font-weight:bold;color:#fff;mix-blend-mode:difference;">0%</div>
                                     </div>
+                                    <div id="fwo-status-region" role="status" aria-live="polite" class="screen-reader-text"></div>
                                     <?php if ( $pending_bytes > 0 || $managed_savings > 0 ) : ?>
                                     <p class="description" style="margin-top:14px;">
                                         <?php
@@ -1092,6 +1099,8 @@ class TIMU_WEBP_Support {
                                         <tr>
                                             <th scope="row"><?php esc_html_e( 'Output Format', 'thisismyurl-webp-support' ); ?></th>
                                             <td>
+                                                <fieldset>
+                                                <legend class="screen-reader-text"><?php esc_html_e( 'Output Format', 'thisismyurl-webp-support' ); ?></legend>
                                                 <?php
                                                 $output_presets = array(
                                                     'webp' => __( 'WebP (recommended)', 'thisismyurl-webp-support' ),
@@ -1114,11 +1123,14 @@ class TIMU_WEBP_Support {
                                                         <?php endif; ?>
                                                     </label>
                                                 <?php endforeach; ?>
+                                                </fieldset>
                                             </td>
                                         </tr>
                                         <tr>
                                             <th scope="row"><?php esc_html_e( 'Quality Preset', 'thisismyurl-webp-support' ); ?></th>
                                             <td>
+                                                <fieldset>
+                                                <legend class="screen-reader-text"><?php esc_html_e( 'Quality Preset', 'thisismyurl-webp-support' ); ?></legend>
                                                 <?php
                                                 $quality_presets = array(
                                                     'web'      => __( 'Web (82) â€” balanced size/quality', 'thisismyurl-webp-support' ),
@@ -1138,13 +1150,16 @@ class TIMU_WEBP_Support {
                                                         <?php echo esc_html( $label ); ?>
                                                     </label>
                                                 <?php endforeach; ?>
-                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
+                                                <?php $custom_hidden = ( 'custom' !== $cur_preset ); ?>
+                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo $custom_hidden ? 'display:none;' : ''; ?>"<?php echo $custom_hidden ? ' aria-hidden="true"' : ''; ?>>
                                                     <label for="timu-quality"><?php esc_html_e( 'Custom quality (0â€“100):', 'thisismyurl-webp-support' ); ?></label>
                                                     <input id="timu-quality" type="number" min="0" max="100"
                                                         name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
                                                         value="<?php echo esc_attr( $options['quality'] ); ?>"
-                                                        class="small-text" style="margin-left:6px;" />
+                                                        class="small-text" style="margin-left:6px;"
+                                                        <?php disabled( $custom_hidden ); ?> />
                                                 </div>
+                                                </fieldset>
                                             </td>
                                         </tr>
                                         <tr>
@@ -1244,7 +1259,7 @@ class TIMU_WEBP_Support {
                                                 <td><?php echo esc_html( $saved_sz ); ?></td>
                                                 <td>
                                                     <?php if ( 'missing' === $status ) : ?>
-                                                        <span style="color:#d63638;"><?php esc_html_e( 'File Missing', 'thisismyurl-webp-support' ); ?></span>
+                                                        <span style="color:#d63638;"><span aria-hidden="true">&#9888; </span><strong><?php esc_html_e( 'File Missing', 'thisismyurl-webp-support' ); ?></strong></span>
                                                     <?php elseif ( 'disabled_by_settings' === $status ) : ?>
                                                         <span class="description"><?php esc_html_e( 'Excluded by Settings', 'thisismyurl-webp-support' ); ?></span>
                                                     <?php elseif ( $orig && 'external' !== $orig ) : ?>
