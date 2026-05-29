@@ -5,7 +5,7 @@ Tags: webp, images, media, optimization, compression
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.6147
+Stable tag: 1.6148.2110
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,19 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 * French (Canada) — Christopher Ross
 
 == Changelog ==
+
+= 1.6151 =
+* Uninstall: the companion-path meta (`_webp_companion_path`) written for "Both" (AVIF + WebP) attachments is now removed on uninstall, alongside the original-path and savings meta, so no orphan post meta survives.
+
+= 1.6150 =
+* Accessibility (WCAG 2.2 AA): the optimization progress bar now exposes `role="progressbar"` with `aria-valuenow/min/max` and an accessible label, and the admin script keeps `aria-valuenow` in sync with the visual width.
+* Accessibility: added a polite `role="status"` live region so screen readers announce batch progress, results, and completion.
+* Accessibility: the "File Missing" status now carries a non-colour cue (warning icon and bold text) instead of signalling state by red colour alone.
+* Accessibility: the Output Format and Quality Preset radio groups are wrapped in `<fieldset>` with a screen-reader `<legend>` for a programmatic group name.
+* Accessibility: the custom-quality field is hidden from assistive technology and disabled when the Custom preset is not selected, and restored when it is.
+
+= 1.6149 =
+* Added WordPress 7.0 Abilities API support: `thisismyurl-webp-support/convert` (batch conversion) and `thisismyurl-webp-support/restore` (restore originals from backups), both guarded by the `manage_options` capability.
 
 = 1.6147 =
 * Unified plugin versioning to the x.Yddd calendar-version scheme.

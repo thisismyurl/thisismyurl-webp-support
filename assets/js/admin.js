@@ -34,7 +34,19 @@ jQuery( function ( $ ) {
         var pct = total > 0 ? Math.round( ( shown / total ) * 100 ) : 100;
         $( '#fwo-progress-bar' ).css( 'width', pct + '%' );
         $( '#fwo-progress-text' ).text( pct + '% (' + Math.round( shown ) + '/' + total + ')' );
+        /* Keep the progressbar role's state in sync with the visual width. */
+        $( '#fwo-progress-container' ).attr( 'aria-valuenow', pct );
         $( '#p-cnt' ).text( Math.max( 0, total - Math.round( shown ) ) );
+    }
+
+    /**
+     * Write a message into the polite live region so screen readers
+     * announce batch progress and results without stealing focus.
+     *
+     * @param {string} message Text to announce.
+     */
+    function announceStatus( message ) {
+        $( '#fwo-status-region' ).text( message );
     }
 
     function ensureBusyIndicator() {
@@ -231,6 +243,7 @@ jQuery( function ( $ ) {
         $( '#btn-cancel' ).show();
         $( '#fwo-progress-container' ).fadeIn();
         startBusyIndicator();
+        announceStatus( 'Optimizing ' + total + ' images. 0 percent complete.' );
 
         var processNextBatch = function () {
             if ( isCancelled || ! pendingIds.length ) {
@@ -291,14 +304,22 @@ jQuery( function ( $ ) {
                     updateProgress( total );
                     if ( pendingTable ) { pendingTable.refresh(); }
 
+                    var donePct = total > 0 ? Math.round( ( completed / total ) * 100 ) : 100;
+                    announceStatus(
+                        completed + ' of ' + total + ' images optimized, ' + donePct + ' percent complete.' +
+                        ( failed.length ? ' ' + failed.length + ' failed in this run.' : '' )
+                    );
+
                     if ( ! pendingIds.length ) {
                         stopBusyIndicator();
+                        announceStatus( 'Optimization complete. ' + completed + ' of ' + total + ' images processed.' );
                         window.location.reload();
                         return;
                     }
                 } )
                 .fail( function () {
                     isCancelled = true;
+                    announceStatus( 'Batch request failed or timed out. The queue was preserved; refresh to retry.' );
                     window.alert( 'Batch request failed or timed out. Queue was preserved, so refresh and retry will continue from the same items.' );
                 } )
                 .always( function () {
@@ -325,9 +346,24 @@ jQuery( function ( $ ) {
     ( function () {
         var custom = document.getElementById( 'timu-custom-quality' );
         if ( ! custom ) { return; }
+        var input = document.getElementById( 'timu-quality' );
+
+        function toggleCustom( show ) {
+            custom.style.display = show ? '' : 'none';
+            /* Keep the hidden field out of the accessibility tree and tab order
+               when it is not in context, and restore it when shown. */
+            if ( show ) {
+                custom.removeAttribute( 'aria-hidden' );
+                if ( input ) { input.disabled = false; }
+            } else {
+                custom.setAttribute( 'aria-hidden', 'true' );
+                if ( input ) { input.disabled = true; }
+            }
+        }
+
         document.querySelectorAll( '.timu-preset-radio' ).forEach( function ( radio ) {
             radio.addEventListener( 'change', function () {
-                custom.style.display = 'custom' === this.value ? '' : 'none';
+                toggleCustom( 'custom' === this.value );
             } );
         } );
     }() );
