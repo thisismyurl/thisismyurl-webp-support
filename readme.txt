@@ -1,4 +1,4 @@
-=== This Is My URL - WEBP Support ===
+=== - WEBP Support by Christopher Ross ===
 Contributors: thisismyurl
 Donate link: https://github.com/sponsors/thisismyurl
 Tags: webp, images, media, optimization, compression

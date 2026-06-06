@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       This Is My URL - WEBP Support
+ * Plugin Name:       - WEBP Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
  * Version:           1.6149.0734
