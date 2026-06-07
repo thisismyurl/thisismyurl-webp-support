@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       - WEBP Support by Christopher Ross
+ * Plugin Name:       WEBP Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
  * Version:           1.6149.0734
@@ -106,7 +106,7 @@ class TIMU_WEBP_Support {
             'timu-webp-support-admin',
             plugin_dir_url( __FILE__ ) . 'assets/js/admin.js',
             array( 'jquery' ),
-            '1.26112',
+            '1.6149.0734',
             true
         );
     }
@@ -862,7 +862,7 @@ class TIMU_WEBP_Support {
             wp_send_json_error( __( 'Unauthorized request.', 'thisismyurl-webp-support' ) );
         }
 
-        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( wp_unslash( $_POST['attachment_id'] ) ) : 0;
         if ( ! $attachment_id ) {
             wp_send_json_error( __( 'Invalid attachment ID.', 'thisismyurl-webp-support' ) );
         }
@@ -894,7 +894,7 @@ class TIMU_WEBP_Support {
         }
 
         $batch_limit = self::get_batch_size_setting();
-        $ids         = isset( $_POST['attachment_ids'] ) ? (array) $_POST['attachment_ids'] : array();
+        $ids         = isset( $_POST['attachment_ids'] ) ? (array) wp_unslash( $_POST['attachment_ids'] ) : array();
         $ids         = array_slice( array_values( array_filter( array_map( 'absint', $ids ) ) ), 0, $batch_limit );
 
         if ( empty( $ids ) ) {
@@ -936,7 +936,7 @@ class TIMU_WEBP_Support {
             wp_send_json_error( __( 'Unauthorized request.', 'thisismyurl-webp-support' ) );
         }
 
-        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( wp_unslash( $_POST['attachment_id'] ) ) : 0;
         if ( ! $attachment_id ) {
             wp_send_json_error( __( 'Invalid attachment ID.', 'thisismyurl-webp-support' ) );
         }
