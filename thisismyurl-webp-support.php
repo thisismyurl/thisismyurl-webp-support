@@ -3,7 +3,7 @@
  * Plugin Name:       WEBP Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
- * Version:           1.6149.0734
+ * Version:           1.6158.1440
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
@@ -106,7 +106,7 @@ class TIMU_WEBP_Support {
             'timu-webp-support-admin',
             plugin_dir_url( __FILE__ ) . 'assets/js/admin.js',
             array( 'jquery' ),
-            '1.6149.0734',
+            '1.6158.1440',
             true
         );
     }
