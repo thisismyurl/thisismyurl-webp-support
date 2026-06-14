@@ -2,36 +2,36 @@
 
 [![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
 
-A WordPress plugin that converts Media Library attachments (JPEG, PNG, GIF, BMP) to WebP or AVIF non-destructively, with safe backups and one-click restore. Built for site owners who want modern image formats without giving up the ability to roll back.
+A WordPress plugin that converts Media Library attachments (JPEG, PNG, GIF) to WebP or AVIF non-destructively, with safe backups and one-click restore. Built for site owners who want modern image formats without giving up the ability to roll back.
 
 > **Part of the Christopher Ross image toolkit:** [Image Support](https://github.com/thisismyurl/thisismyurl-image-support) for library-wide filename cleanup, content-reference syncing, photo credits, and alt text; [WebP Support](https://github.com/thisismyurl/thisismyurl-webp-support) and [HEIC Support](https://github.com/thisismyurl/thisismyurl-heic-support) for focused format conversion; and [SVG Support](https://github.com/thisismyurl/thisismyurl-svg-support) for safe SVG uploads. Reach for a focused plugin if you only need that format; use Image Support for library-wide work.
 
 ## What it does
 
-- Tools > WebP Support page with Optimize, Settings, Pending, and Managed Media sections.
+- Tools > WebP Support page with a tabbed Optimize / Settings / Report layout.
 - **Output Format** setting: WebP (default), AVIF (requires Imagick with libheif), or Both (AVIF primary + WebP companion via `<picture>` for format negotiation).
 - **Quality Preset** setting: Web (82), Print (95), Lossless (100), or Custom.
-- Per-format conversion toggles for JPG/JPEG, PNG, GIF, and BMP.
-- Non-destructive batch conversion with progress bar, savings stats, and a working Cancel.
+- Per-format conversion toggles for JPG/JPEG, PNG, and GIF.
+- Non-destructive batch conversion with progress bar, savings stats, search, pagination, and a working Cancel.
+- Optimize-on-upload: convert new uploads automatically as they arrive.
+- Background auto-optimize: process pending images during wp-admin visits, in WP-Cron, or both, on a configurable interval and batch size.
+- Business ROI report: bandwidth saved and estimated monthly/annual savings across 30-day, 90-day, 12-month, and all-time windows.
 - Pending table shows per-image file sizes; Managed Media table shows bytes saved.
 - Single-image Restore plus a Restore All Originals bulk action.
 - Per-attachment lock so two operators (or two browser tabs) cannot race the same file.
 - Attachment metadata regenerated after each conversion or restoration.
+- Optional outbound UTM tagging on links back to thisismyurl.com (static and privacy-safe; no site, account, user, visitor, or domain data).
 - Optional backup-folder cleanup on uninstall.
 - WP-CLI: `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status`.
+- WordPress 7.0 Abilities API support for the convert and restore operations.
 - French (Canada) translation included (`fr_CA`).
 
 ## What it doesn't do
 
-The 0.6115 README listed several features that were never in the code. Those claims have been retracted. This plugin does **not** ship:
+- No EXIF / GPS / metadata stripping on the converted output.
+- No theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
 
-- A tabbed admin UI or ROI report.
-- Optimize-on-upload, background auto-optimize, or WP-Cron scheduling.
-- EXIF / GPS / metadata stripping.
-- Outbound UTM tagging.
-- Theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
-
-If you need any of those, this is not the plugin for you. Open an issue if you'd like one of them added.
+If you need either of those, this is not the plugin for you. Open an issue if you'd like one added.
 
 ## Requirements
 
