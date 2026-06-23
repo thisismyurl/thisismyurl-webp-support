@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       WEBP Support by thisismyurl.com
+ * Plugin Name:       WEBP Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
- * Version:           0.6174.1641
+ * Version:           1.6165.0822
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
@@ -20,6 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+if ( ! defined( 'TIMU_WEBP_VERSION' ) ) {
+    define( 'TIMU_WEBP_VERSION', '1.6165.0822' );
+}
 if ( ! defined( 'TIMU_WEBP_SUPPORT_DIR' ) ) {
     define( 'TIMU_WEBP_SUPPORT_DIR', plugin_dir_path( __FILE__ ) );
 }
@@ -33,8 +36,13 @@ class TIMU_WEBP_Support {
     const BACKUP_META_KEY    = '_webp_original_path';
     const SAVINGS_META_KEY   = '_webp_savings';
     const COMPANION_META_KEY = '_webp_companion_path';
+    const CONVERTED_AT_KEY   = '_webp_converted_at';
     const OPTION_KEY         = 'timu_webp_support_options';
     const SETTINGS_GROUP     = 'timu_webp_support_settings';
+    const CRON_HOOK          = 'timu_webp_auto_optimize_event';
+    const ENV_OPTION_KEY     = 'timu_webp_environment_status';
+    const ADMIN_TICK_LOCK    = 'timu_webp_admin_tick_lock';
+    const BATCH_BACKUP_LOCK  = 'timu_webp_batch_backup_lock';
     const LOCK_PREFIX        = 'timu_webp_lock_';
     const LOCK_TTL_SECONDS   = 300;
 
@@ -48,12 +56,17 @@ class TIMU_WEBP_Support {
         add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ) );
         add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+        add_action( 'admin_notices', array( __CLASS__, 'maybe_show_environment_notice' ) );
+        add_action( 'init', array( __CLASS__, 'sync_auto_optimize_schedule' ), 25 );
+        add_action( 'admin_init', array( __CLASS__, 'maybe_auto_optimize_on_admin_access' ), 40 );
+        add_action( self::CRON_HOOK, array( __CLASS__, 'run_auto_optimize_cron' ) );
+        add_filter( 'cron_schedules', array( __CLASS__, 'register_cron_schedules' ) );
+        add_filter( 'wp_generate_attachment_metadata', array( __CLASS__, 'maybe_optimize_on_upload' ), 99, 2 );
         add_action( 'wp_ajax_timu_wsbulk_optimize', array( __CLASS__, 'ajax_bulk_optimize' ) );
         add_action( 'wp_ajax_timu_wsprocess_batch', array( __CLASS__, 'ajax_process_batch' ) );
         add_action( 'wp_ajax_timu_wsrestore_single', array( __CLASS__, 'ajax_restore_single' ) );
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
         add_filter( 'wp_get_attachment_image', array( __CLASS__, 'maybe_wrap_picture' ), 10, 5 );
-        add_action( 'wp_dashboard_setup', array( __CLASS__, 'register_dashboard_widget' ) );
 
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             \WP_CLI::add_command( 'webp', 'TIMU_WEBP_Support_CLI' );
@@ -107,7 +120,7 @@ class TIMU_WEBP_Support {
             'timu-webp-support-admin',
             plugin_dir_url( __FILE__ ) . 'assets/js/admin.js',
             array( 'jquery' ),
-            '1.26112',
+            TIMU_WEBP_VERSION,
             true
         );
     }
@@ -128,16 +141,18 @@ class TIMU_WEBP_Support {
     }
 
     /**
-     * Add Settings and Donate links to plugin row actions.
+     * Add Settings and Sponsor links to plugin row actions.
      *
      * @param array $links Existing plugin row links.
      *
      * @return array
      */
     public static function add_plugin_action_links( $links ) {
+        $settings_url = admin_url( 'tools.php?page=webp-optimizer&tab=settings' );
+
         $custom_links = array(
-            '<a href="' . esc_url( admin_url( 'tools.php?page=webp-optimizer' ) ) . '">' . esc_html__( 'Settings', 'thisismyurl-webp-support' ) . '</a>',
-            '<a href="' . esc_url( 'https://thisismyurl.com/donate/' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Donate', 'thisismyurl-webp-support' ) . '</a>',
+            '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'Settings', 'thisismyurl-webp-support' ) . '</a>',
+            '<a href="' . esc_url( 'https://github.com/sponsors/thisismyurl' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Sponsor', 'thisismyurl-webp-support' ) . '</a>',
         );
 
         return array_merge( $custom_links, $links );
@@ -150,12 +165,22 @@ class TIMU_WEBP_Support {
      */
     private static function get_default_options() {
         return array(
-            'quality'                  => 80,
-            'quality_preset'           => 'web',
-            'output_format'            => 'webp',
-            'batch_size'               => 10,
-            'enabled_extensions'       => array( 'jpg', 'jpeg', 'png', 'gif', 'bmp' ),
-            'delete_backups_uninstall' => 1,
+            'quality'                   => 80,
+            'quality_preset'            => 'web',
+            'output_format'             => 'webp',
+            'batch_size'                => 10,
+            'enabled_extensions'        => array( 'jpg', 'jpeg', 'png', 'gif' ),
+            'optimize_on_upload'        => 1,
+            'auto_optimize_enabled'     => 0,
+            'auto_optimize_admin'       => 1,
+            'auto_optimize_cron'        => 1,
+            'auto_optimize_interval'    => 'hourly',
+            'auto_optimize_batch'       => 3,
+            'list_per_page'             => 25,
+            'report_bandwidth_cost_gb'  => 0.08,
+            'report_monthly_image_hits' => 50000,
+            'track_outbound_utms'       => 1,
+            'delete_backups_uninstall'  => 1,
         );
     }
 
@@ -210,13 +235,38 @@ class TIMU_WEBP_Support {
             $enabled_extensions = array( 'jpg' );
         }
 
+        $auto_batch = isset( $input['auto_optimize_batch'] ) ? absint( $input['auto_optimize_batch'] ) : $defaults['auto_optimize_batch'];
+        $auto_batch = min( 25, max( 1, $auto_batch ) );
+
+        $allowed_intervals = array( 'fifteen_minutes', 'hourly', 'twicedaily', 'daily' );
+        $interval          = isset( $input['auto_optimize_interval'] ) ? sanitize_key( (string) $input['auto_optimize_interval'] ) : 'hourly';
+        if ( ! in_array( $interval, $allowed_intervals, true ) ) {
+            $interval = 'hourly';
+        }
+
+        $report_cost_gb = isset( $input['report_bandwidth_cost_gb'] ) ? (float) $input['report_bandwidth_cost_gb'] : (float) $defaults['report_bandwidth_cost_gb'];
+        $report_cost_gb = min( 10, max( 0, $report_cost_gb ) );
+
+        $report_hits = isset( $input['report_monthly_image_hits'] ) ? absint( $input['report_monthly_image_hits'] ) : (int) $defaults['report_monthly_image_hits'];
+        $report_hits = min( 100000000, max( 0, $report_hits ) );
+
         return array(
-            'quality'                  => $quality,
-            'quality_preset'           => $quality_preset,
-            'output_format'            => $output_format,
-            'batch_size'               => $batch_size,
-            'enabled_extensions'       => $enabled_extensions,
-            'delete_backups_uninstall' => isset( $input['delete_backups_uninstall'] ) ? 1 : 0,
+            'quality'                   => $quality,
+            'quality_preset'            => $quality_preset,
+            'output_format'             => $output_format,
+            'batch_size'                => $batch_size,
+            'enabled_extensions'        => $enabled_extensions,
+            'optimize_on_upload'        => isset( $input['optimize_on_upload'] ) ? 1 : 0,
+            'auto_optimize_enabled'     => isset( $input['auto_optimize_enabled'] ) ? 1 : 0,
+            'auto_optimize_admin'       => isset( $input['auto_optimize_admin'] ) ? 1 : 0,
+            'auto_optimize_cron'        => isset( $input['auto_optimize_cron'] ) ? 1 : 0,
+            'auto_optimize_interval'    => $interval,
+            'auto_optimize_batch'       => $auto_batch,
+            'list_per_page'             => min( 500, max( 5, isset( $input['list_per_page'] ) ? absint( $input['list_per_page'] ) : 25 ) ),
+            'report_bandwidth_cost_gb'  => $report_cost_gb,
+            'report_monthly_image_hits' => $report_hits,
+            'track_outbound_utms'       => isset( $input['track_outbound_utms'] ) ? 1 : 0,
+            'delete_backups_uninstall'  => isset( $input['delete_backups_uninstall'] ) ? 1 : 0,
         );
     }
 
@@ -275,6 +325,357 @@ class TIMU_WEBP_Support {
 
         $formats = array_map( 'strtolower', Imagick::queryFormats( 'AVIF*' ) );
         return in_array( 'avif', $formats, true );
+    }
+
+    /**
+     * Return whether at least one supported image engine is available.
+     *
+     * @return bool
+     */
+    private static function has_supported_image_engine() {
+        return ( extension_loaded( 'imagick' ) && class_exists( 'Imagick' ) ) || function_exists( 'gd_info' );
+    }
+
+    /**
+     * Build a thisismyurl link with optional static, privacy-safe UTM tags.
+     *
+     * @param string $url      Destination URL.
+     * @param string $campaign Campaign identifier.
+     *
+     * @return string
+     */
+    private static function get_thisismyurl_link( $url, $campaign ) {
+        $options = self::get_options();
+        if ( empty( $options['track_outbound_utms'] ) ) {
+            return $url;
+        }
+
+        return add_query_arg(
+            array(
+                'utm_source'   => 'wp_plugin',
+                'utm_medium'   => 'webp_support',
+                'utm_campaign' => sanitize_key( $campaign ),
+            ),
+            $url
+        );
+    }
+
+    /**
+     * Activation callback. Records environment capability details for admins.
+     *
+     * @return void
+     */
+    public static function activate_plugin() {
+        $status = array(
+            'checked_at'  => time(),
+            'has_imagick' => extension_loaded( 'imagick' ) && class_exists( 'Imagick' ),
+            'has_gd'      => function_exists( 'gd_info' ),
+            'php'         => PHP_VERSION,
+            'wp_version'  => get_bloginfo( 'version' ),
+        );
+
+        update_option( self::ENV_OPTION_KEY, $status, false );
+        set_transient( 'timu_webp_activation_status', $status, MINUTE_IN_SECONDS * 5 );
+    }
+
+    /**
+     * Deactivation callback. Clears scheduled events and locks.
+     *
+     * @return void
+     */
+    public static function deactivate_plugin() {
+        while ( false !== wp_next_scheduled( self::CRON_HOOK ) ) {
+            $timestamp = wp_next_scheduled( self::CRON_HOOK );
+            if ( false === $timestamp ) {
+                break;
+            }
+            wp_unschedule_event( (int) $timestamp, self::CRON_HOOK );
+        }
+        delete_transient( self::ADMIN_TICK_LOCK );
+    }
+
+    /**
+     * Register custom schedules used by background auto optimization.
+     *
+     * @param array $schedules Existing schedules.
+     *
+     * @return array
+     */
+    public static function register_cron_schedules( $schedules ) {
+        if ( ! isset( $schedules['fifteen_minutes'] ) ) {
+            $schedules['fifteen_minutes'] = array(
+                'interval' => 15 * MINUTE_IN_SECONDS,
+                'display'  => __( 'Every 15 Minutes', 'thisismyurl-webp-support' ),
+            );
+        }
+
+        return $schedules;
+    }
+
+    /**
+     * Show environment notice after activation or when no image engine exists.
+     *
+     * @return void
+     */
+    public static function maybe_show_environment_notice() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $status = get_transient( 'timu_webp_activation_status' );
+        if ( false !== $status ) {
+            delete_transient( 'timu_webp_activation_status' );
+        } else {
+            $status = get_option( self::ENV_OPTION_KEY, array() );
+        }
+
+        if ( empty( $status ) || ! is_array( $status ) ) {
+            return;
+        }
+
+        $has_imagick = ! empty( $status['has_imagick'] );
+        $has_gd      = ! empty( $status['has_gd'] );
+
+        if ( ! $has_imagick && ! $has_gd ) {
+            echo '<div class="notice notice-error"><p>';
+            echo esc_html__( 'WebP Support requires GD or Imagick. Neither image engine was detected, so conversions cannot run until one is enabled.', 'thisismyurl-webp-support' );
+            echo '</p></div>';
+        }
+    }
+
+    /**
+     * Keep auto-optimization cron scheduling aligned with plugin settings.
+     *
+     * @return void
+     */
+    public static function sync_auto_optimize_schedule() {
+        $options         = self::get_options();
+        $should_schedule = ! empty( $options['auto_optimize_enabled'] ) && ! empty( $options['auto_optimize_cron'] );
+
+        if ( ! $should_schedule ) {
+            while ( false !== wp_next_scheduled( self::CRON_HOOK ) ) {
+                $timestamp = wp_next_scheduled( self::CRON_HOOK );
+                if ( false === $timestamp ) {
+                    break;
+                }
+                wp_unschedule_event( (int) $timestamp, self::CRON_HOOK );
+            }
+            return;
+        }
+
+        $interval = isset( $options['auto_optimize_interval'] ) ? $options['auto_optimize_interval'] : 'hourly';
+        $event    = wp_get_scheduled_event( self::CRON_HOOK );
+
+        if ( $event && isset( $event->schedule ) && $event->schedule !== $interval ) {
+            wp_unschedule_event( (int) $event->timestamp, self::CRON_HOOK );
+            $event = false;
+        }
+
+        if ( ! $event ) {
+            wp_schedule_event( time() + MINUTE_IN_SECONDS, $interval, self::CRON_HOOK );
+        }
+    }
+
+    /**
+     * Optimize new uploads right after metadata generation, when enabled.
+     *
+     * @param array $metadata      Attachment metadata.
+     * @param int   $attachment_id Attachment ID.
+     *
+     * @return array
+     */
+    public static function maybe_optimize_on_upload( $metadata, $attachment_id ) {
+        $options = self::get_options();
+
+        if ( empty( $options['optimize_on_upload'] ) ) {
+            return $metadata;
+        }
+
+        if ( ! self::has_supported_image_engine() ) {
+            return $metadata;
+        }
+
+        if ( get_post_meta( $attachment_id, self::BACKUP_META_KEY, true ) ) {
+            return $metadata;
+        }
+
+        if ( ! in_array( get_post_mime_type( $attachment_id ), self::get_enabled_source_mimes(), true ) ) {
+            return $metadata;
+        }
+
+        self::convert_image( (int) $attachment_id, self::get_quality_setting() );
+
+        return $metadata;
+    }
+
+    /**
+     * Process a small optimization batch when admin pages are accessed.
+     *
+     * @return void
+     */
+    public static function maybe_auto_optimize_on_admin_access() {
+        if ( ! is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+            return;
+        }
+
+        $options = self::get_options();
+        if ( empty( $options['auto_optimize_enabled'] ) || empty( $options['auto_optimize_admin'] ) ) {
+            return;
+        }
+
+        if ( get_transient( self::ADMIN_TICK_LOCK ) ) {
+            return;
+        }
+
+        set_transient( self::ADMIN_TICK_LOCK, 1, MINUTE_IN_SECONDS * 5 );
+        self::run_auto_optimize_batch( 'admin' );
+    }
+
+    /**
+     * Cron callback for background auto optimization.
+     *
+     * @return void
+     */
+    public static function run_auto_optimize_cron() {
+        self::run_auto_optimize_batch( 'cron' );
+    }
+
+    /**
+     * Execute one small auto optimization batch.
+     *
+     * @param string $context Trigger context.
+     *
+     * @return void
+     */
+    private static function run_auto_optimize_batch( $context ) {
+        if ( ! self::has_supported_image_engine() ) {
+            return;
+        }
+
+        $enabled_mimes = self::get_enabled_source_mimes();
+        if ( empty( $enabled_mimes ) ) {
+            return;
+        }
+
+        $options = self::get_options();
+        $limit   = isset( $options['auto_optimize_batch'] ) ? (int) $options['auto_optimize_batch'] : 3;
+        $limit   = min( 25, max( 1, $limit ) );
+
+        $query = new WP_Query(
+            array(
+                'post_type'              => 'attachment',
+                'post_status'            => 'inherit',
+                'posts_per_page'         => $limit,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+                'orderby'                => 'ID',
+                'order'                  => 'ASC',
+                'post_mime_type'         => $enabled_mimes,
+                'meta_query'             => array(
+                    array(
+                        'key'     => self::BACKUP_META_KEY,
+                        'compare' => 'NOT EXISTS',
+                    ),
+                ),
+            )
+        );
+
+        if ( empty( $query->posts ) ) {
+            return;
+        }
+
+        TIMU_WEBP_Backup_Adapter::snapshot( 'WebP auto optimize', array() );
+
+        foreach ( $query->posts as $attachment_id ) {
+            self::convert_image( (int) $attachment_id, self::get_quality_setting() );
+        }
+    }
+
+    /**
+     * Build reporting metrics for a selected date window.
+     *
+     * @param string $range_key Date range key.
+     *
+     * @return array
+     */
+    private static function get_report_metrics( $range_key ) {
+        $now   = time();
+        $start = 0;
+
+        switch ( $range_key ) {
+            case '30d':
+                $start = $now - ( 30 * DAY_IN_SECONDS );
+                break;
+            case '90d':
+                $start = $now - ( 90 * DAY_IN_SECONDS );
+                break;
+            case '365d':
+                $start = $now - ( 365 * DAY_IN_SECONDS );
+                break;
+            case 'all':
+            default:
+                $start = 0;
+                break;
+        }
+
+        $query = new WP_Query(
+            array(
+                'post_type'              => 'attachment',
+                'post_status'            => 'inherit',
+                'posts_per_page'         => -1,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_term_cache' => false,
+                'post_mime_type'         => array( 'image/webp', 'image/avif' ),
+                'meta_query'             => array(
+                    array(
+                        'key'     => self::BACKUP_META_KEY,
+                        'compare' => 'EXISTS',
+                    ),
+                ),
+            )
+        );
+
+        $converted_count = 0;
+        $bytes_saved     = 0;
+
+        if ( ! empty( $query->posts ) ) {
+            foreach ( $query->posts as $attachment_id ) {
+                $backup_ref = get_post_meta( $attachment_id, self::BACKUP_META_KEY, true );
+                if ( ! $backup_ref || 'external' === $backup_ref ) {
+                    continue;
+                }
+
+                $converted_at = (int) get_post_meta( $attachment_id, self::CONVERTED_AT_KEY, true );
+                if ( $start > 0 && ( $converted_at <= 0 || $converted_at < $start ) ) {
+                    continue;
+                }
+
+                ++$converted_count;
+                $bytes_saved += (int) get_post_meta( $attachment_id, self::SAVINGS_META_KEY, true );
+            }
+        }
+
+        $options         = self::get_options();
+        $monthly_hits    = isset( $options['report_monthly_image_hits'] ) ? (int) $options['report_monthly_image_hits'] : 0;
+        $cost_per_gb     = isset( $options['report_bandwidth_cost_gb'] ) ? (float) $options['report_bandwidth_cost_gb'] : 0.0;
+        $avg_saved_bytes = $converted_count > 0 ? ( $bytes_saved / $converted_count ) : 0;
+        $gb_per_month    = ( $avg_saved_bytes * $monthly_hits ) / ( 1024 * 1024 * 1024 );
+        $monthly_roi     = $gb_per_month * $cost_per_gb;
+
+        return array(
+            'range'           => $range_key,
+            'converted_count' => $converted_count,
+            'bytes_saved'     => $bytes_saved,
+            'gb_saved'        => $bytes_saved / ( 1024 * 1024 * 1024 ),
+            'avg_saved_kb'    => $avg_saved_bytes / 1024,
+            'monthly_hits'    => $monthly_hits,
+            'cost_per_gb'     => $cost_per_gb,
+            'monthly_roi'     => $monthly_roi,
+            'annual_roi'      => $monthly_roi * 12,
+        );
     }
 
     /**
@@ -346,7 +747,6 @@ class TIMU_WEBP_Support {
             'jpeg' => 'image/jpeg',
             'png'  => 'image/png',
             'gif'  => 'image/gif',
-            'bmp'  => 'image/bmp',
         );
     }
 
@@ -490,7 +890,7 @@ class TIMU_WEBP_Support {
      * Resolve a stored backup-path meta value to an absolute filesystem path.
      *
      * New conversions (0.6123+) write the path relative to `uploads/basedir/`
-     * so devâ†”prod database copies and host migrations don't orphan backups.
+     * so dev/prod database copies and host migrations don't orphan backups.
      * Legacy values written by earlier versions stored an absolute path; this
      * reader honours both shapes by leaf-checking for the absolute marker
      * before treating the value as relative.
@@ -507,7 +907,7 @@ class TIMU_WEBP_Support {
             return (string) $stored;
         }
 
-        // Legacy absolute path â€” Unix `/foo`, Windows `C:\foo`, or UNC `\\server\foo`.
+        // Legacy absolute path -- Unix `/foo`, Windows `C:\foo`, or UNC `\\server\foo`.
         if ( '/' === $stored[0] || '\\' === $stored[0] || ( isset( $stored[1] ) && ':' === $stored[1] ) ) {
             return $stored;
         }
@@ -644,7 +1044,7 @@ class TIMU_WEBP_Support {
             if ( 'avif' === $output_format ) {
                 return new WP_Error( 'avif_unsupported', __( 'AVIF output requested but Imagick is missing AVIF support on this server.', 'thisismyurl-webp-support' ) );
             }
-            // Both â†’ fall back to WebP-only when AVIF isn't available.
+            // Both -> fall back to WebP-only when AVIF isn't available.
             $output_format = 'webp';
             $wants_avif    = false;
         }
@@ -676,6 +1076,10 @@ class TIMU_WEBP_Support {
             );
         }
 
+        // Extra safety net via the shared vault/shadow engine, layered on top of
+        // this plugin's own per-file backup below. No-op when no engine is active.
+        TIMU_WEBP_Backup_Adapter::snapshot( 'WebP optimize #' . $attachment_id, array( $full_path ) );
+
         $backup_dir = self::get_backup_dir( $attachment_id );
         if ( ! wp_mkdir_p( $backup_dir ) ) {
             $fs->delete( $new_path );
@@ -688,7 +1092,7 @@ class TIMU_WEBP_Support {
             return new WP_Error( 'move', __( 'Failed to archive original file.', 'thisismyurl-webp-support' ) );
         }
 
-        // Companion WebP for `both` mode â€” created from the archived original so
+        // Companion WebP for `both` mode -- created from the archived original so
         // we re-encode the source pixels, not the freshly-compressed AVIF.
         if ( 'both' === $output_format ) {
             $companion_path   = self::swap_extension( $new_path, 'webp' );
@@ -708,12 +1112,13 @@ class TIMU_WEBP_Support {
                     );
                 }
             }
-            // If companion creation fails we keep the AVIF and move on â€” the
+            // If companion creation fails we keep the AVIF and move on -- the
             // primary conversion already succeeded.
         }
 
         update_post_meta( $attachment_id, self::BACKUP_META_KEY, self::relativize_backup_path( $backup_path ) );
         update_post_meta( $attachment_id, self::SAVINGS_META_KEY, max( 0, (int) $original_size - (int) filesize( $new_path ) ) );
+        update_post_meta( $attachment_id, self::CONVERTED_AT_KEY, time() );
         update_post_meta( $attachment_id, '_wp_attached_file', $new_rel_path );
 
         wp_update_post(
@@ -772,6 +1177,10 @@ class TIMU_WEBP_Support {
         $extension     = strtolower( pathinfo( $backup_path, PATHINFO_EXTENSION ) );
         $restored_path = self::swap_extension( $current_webp, $extension );
 
+        // Extra safety net via the shared vault/shadow engine before we overwrite
+        // the current file with the restored original. No-op when no engine is active.
+        TIMU_WEBP_Backup_Adapter::snapshot( 'WebP restore #' . $attachment_id, array( $current_webp ) );
+
         if ( ! $fs->move( $backup_path, $restored_path, true ) ) {
             return false;
         }
@@ -808,6 +1217,7 @@ class TIMU_WEBP_Support {
         delete_post_meta( $attachment_id, self::BACKUP_META_KEY );
         delete_post_meta( $attachment_id, self::SAVINGS_META_KEY );
         delete_post_meta( $attachment_id, self::COMPANION_META_KEY );
+        delete_post_meta( $attachment_id, self::CONVERTED_AT_KEY );
 
         return true;
     }
@@ -863,7 +1273,7 @@ class TIMU_WEBP_Support {
             wp_send_json_error( __( 'Unauthorized request.', 'thisismyurl-webp-support' ) );
         }
 
-        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( wp_unslash( $_POST['attachment_id'] ) ) : 0;
         if ( ! $attachment_id ) {
             wp_send_json_error( __( 'Invalid attachment ID.', 'thisismyurl-webp-support' ) );
         }
@@ -895,7 +1305,7 @@ class TIMU_WEBP_Support {
         }
 
         $batch_limit = self::get_batch_size_setting();
-        $ids         = isset( $_POST['attachment_ids'] ) ? (array) $_POST['attachment_ids'] : array();
+        $ids         = isset( $_POST['attachment_ids'] ) ? (array) wp_unslash( $_POST['attachment_ids'] ) : array();
         $ids         = array_slice( array_values( array_filter( array_map( 'absint', $ids ) ) ), 0, $batch_limit );
 
         if ( empty( $ids ) ) {
@@ -905,6 +1315,14 @@ class TIMU_WEBP_Support {
         $processed_ids = array();
         $failed_ids    = array();
         $errors        = array();
+
+        // Take one Vault/Shadow safety snapshot per short run window. Re-running a
+        // full backup for every AJAX chunk can cause long delays or timeouts.
+        $backup_lock_key = self::BATCH_BACKUP_LOCK . '_' . get_current_user_id();
+        if ( ! get_transient( $backup_lock_key ) ) {
+            TIMU_WEBP_Backup_Adapter::snapshot( 'WebP batch conversion', array() );
+            set_transient( $backup_lock_key, 1, 15 * MINUTE_IN_SECONDS );
+        }
 
         foreach ( $ids as $attachment_id ) {
             $result = self::convert_to_webp( $attachment_id, self::get_quality_setting() );
@@ -937,7 +1355,7 @@ class TIMU_WEBP_Support {
             wp_send_json_error( __( 'Unauthorized request.', 'thisismyurl-webp-support' ) );
         }
 
-        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( $_POST['attachment_id'] ) : 0;
+        $attachment_id = isset( $_POST['attachment_id'] ) ? absint( wp_unslash( $_POST['attachment_id'] ) ) : 0;
         if ( ! $attachment_id ) {
             wp_send_json_error( __( 'Invalid attachment ID.', 'thisismyurl-webp-support' ) );
         }
@@ -950,91 +1368,6 @@ class TIMU_WEBP_Support {
     }
 
     /**
-     * Register the dashboard widget for users with the upload_files capability.
-     *
-     * @return void
-     */
-    public static function register_dashboard_widget() {
-        if ( ! current_user_can( 'upload_files' ) ) {
-            return;
-        }
-
-        wp_add_dashboard_widget(
-            'timu_webp_savings_widget',
-            __( 'WebP Support', 'thisismyurl-webp-support' ),
-            array( __CLASS__, 'render_dashboard_widget' )
-        );
-    }
-
-    /**
-     * Render the dashboard widget body showing cumulative conversion savings.
-     *
-     * Queries up to 500 attachment IDs that carry _webp_savings meta, sums the
-     * saved byte counts, and displays: converted image count, total disk saved,
-     * and an estimated bandwidth saving (70 % proxy).
-     *
-     * @return void
-     */
-    public static function render_dashboard_widget() {
-        if ( ! current_user_can( 'upload_files' ) ) {
-            return;
-        }
-
-        $ids = get_posts(
-            array(
-                'post_type'              => 'attachment',
-                'post_status'            => 'inherit',
-                'posts_per_page'         => 500,
-                'fields'                 => 'ids',
-                'meta_key'               => self::SAVINGS_META_KEY,
-                'no_found_rows'          => true,
-                'update_post_meta_cache' => false,
-                'update_post_term_cache' => false,
-            )
-        );
-
-        $count        = 0;
-        $total_bytes  = 0;
-
-        foreach ( $ids as $id ) {
-            $saved = (int) get_post_meta( $id, self::SAVINGS_META_KEY, true );
-            if ( $saved > 0 ) {
-                ++$count;
-                $total_bytes += $saved;
-            }
-        }
-
-        $bandwidth_bytes = (int) round( $total_bytes * 0.7 );
-
-        if ( 0 === $count ) {
-            echo '<p>' . esc_html__( 'No images have been converted yet.', 'thisismyurl-webp-support' ) . '</p>';
-            return;
-        }
-
-        ?>
-        <ul style="margin:0;padding:0;list-style:none;">
-            <li>
-                <strong><?php esc_html_e( 'Images converted:', 'thisismyurl-webp-support' ); ?></strong>
-                <?php echo esc_html( number_format_i18n( $count ) ); ?>
-            </li>
-            <li>
-                <strong><?php esc_html_e( 'Total disk saved:', 'thisismyurl-webp-support' ); ?></strong>
-                <?php echo esc_html( size_format( $total_bytes, 2 ) ); ?>
-            </li>
-            <li>
-                <strong><?php esc_html_e( 'Est. bandwidth saved:', 'thisismyurl-webp-support' ); ?></strong>
-                <?php echo esc_html( size_format( $bandwidth_bytes, 2 ) ); ?>
-            </li>
-        </ul>
-        <p style="margin-top:8px;">
-            <a href="<?php echo esc_url( admin_url( 'tools.php?page=webp-optimizer' ) ); ?>">
-                <?php esc_html_e( 'Manage images', 'thisismyurl-webp-support' ); ?> &rarr;
-            </a>
-        </p>
-        <?php
-    }
-
-    /**
      * Render the admin page.
      *
      * @return void
@@ -1042,6 +1375,12 @@ class TIMU_WEBP_Support {
     public static function render_admin_page() {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'You do not have permission to access this page.', 'thisismyurl-webp-support' ) );
+        }
+
+        $allowed_tabs = array( 'optimize', 'settings', 'report' );
+        $active_tab   = isset( $_GET['tab'] ) ? sanitize_key( (string) $_GET['tab'] ) : 'optimize'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( ! in_array( $active_tab, $allowed_tabs, true ) ) {
+            $active_tab = 'optimize';
         }
 
         $lists       = self::get_media_lists();
@@ -1062,7 +1401,7 @@ class TIMU_WEBP_Support {
         }
 
         // Savings stats (issue #23).
-        $pending_bytes         = 0;
+        $pending_bytes = 0;
         foreach ( $lists['pending'] as $post ) {
             $f = get_attached_file( $post->ID );
             if ( $f && file_exists( $f ) ) {
@@ -1090,17 +1429,25 @@ class TIMU_WEBP_Support {
                         'restore' => 'timu_wsrestore_single',
                     ),
                     'batchSize'  => self::get_batch_size_setting(),
+                    'perPage'    => (int) $options['list_per_page'],
                     'pendingIds' => $pending_ids,
                     'strings'    => array(
-                        'processing'       => __( 'Processing...', 'thisismyurl-webp-support' ),
-                        'restoring'        => __( 'Restoring...', 'thisismyurl-webp-support' ),
-                        'confirmRestoreAll'=> __( 'Restore all images? This cannot be undone.', 'thisismyurl-webp-support' ),
-                        'failedPrefix'     => __( 'Some images failed:', 'thisismyurl-webp-support' ),
+                        'processing'        => __( 'Processing...', 'thisismyurl-webp-support' ),
+                        'restoring'         => __( 'Restoring...', 'thisismyurl-webp-support' ),
+                        'confirmRestoreAll' => __( 'Restore all images? This cannot be undone.', 'thisismyurl-webp-support' ),
+                        'failedPrefix'      => __( 'Some images failed:', 'thisismyurl-webp-support' ),
                     ),
                 )
             ) . ';',
             'before'
         );
+
+        $base_url        = admin_url( 'tools.php?page=webp-optimizer' );
+        $optimize_url    = $base_url . '&tab=optimize';
+        $settings_url    = $base_url . '&tab=settings';
+        $report_url      = $base_url . '&tab=report';
+        $thisismyurl_url = self::get_thisismyurl_link( 'https://thisismyurl.com/', 'plugin_header' );
+        $sponsor_url     = 'https://github.com/sponsors/thisismyurl';
 
         ?>
         <div class="wrap">
@@ -1110,35 +1457,66 @@ class TIMU_WEBP_Support {
                     <?php
                     echo wp_kses_post(
                         sprintf(
+                            /* translators: %s: link to thisismyurl.com */
                             __( 'by %s', 'thisismyurl-webp-support' ),
-                            '<a href="https://thisismyurl.com/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">thisismyurl.com</a>'
+                            '<a href="' . esc_url( $thisismyurl_url ) . '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">thisismyurl.com</a>'
                         )
                     );
                     ?>
                 </span>
             </h1>
-            <p><?php esc_html_e( 'Non-destructive WebP/AVIF conversion with backups and one-click restoration.', 'thisismyurl-webp-support' ); ?></p>
+
+            <nav class="nav-tab-wrapper wp-clearfix">
+                <a href="<?php echo esc_url( $optimize_url ); ?>" class="nav-tab<?php echo 'optimize' === $active_tab ? ' nav-tab-active' : ''; ?>">
+                    <?php esc_html_e( 'Optimize', 'thisismyurl-webp-support' ); ?>
+                    <?php if ( ! empty( $pending_ids ) ) : ?>
+                        <span class="awaiting-mod" style="margin-left:4px;"><?php echo esc_html( count( $pending_ids ) ); ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="<?php echo esc_url( $settings_url ); ?>" class="nav-tab<?php echo 'settings' === $active_tab ? ' nav-tab-active' : ''; ?>">
+                    <?php esc_html_e( 'Settings', 'thisismyurl-webp-support' ); ?>
+                </a>
+                <a href="<?php echo esc_url( $report_url ); ?>" class="nav-tab<?php echo 'report' === $active_tab ? ' nav-tab-active' : ''; ?>">
+                    <?php esc_html_e( 'Report', 'thisismyurl-webp-support' ); ?>
+                </a>
+            </nav>
+
+            <?php if ( 'optimize' === $active_tab ) : ?>
 
             <div id="poststuff">
                 <div id="post-body" class="metabox-holder columns-2">
                     <div id="post-body-content">
+
                         <div class="postbox">
                             <h2 class="hndle"><span><?php esc_html_e( 'Optimization Dashboard', 'thisismyurl-webp-support' ); ?></span></h2>
                             <div class="inside">
                                 <div class="welcome-panel-content" style="padding:10px 0;min-height:100px;">
                                     <div class="fwo-controls" style="display:flex;gap:10px;align-items:center;">
                                         <button id="btn-start" class="button button-primary button-large" <?php disabled( empty( $pending_ids ) ); ?>>
-                                            <?php printf( esc_html__( 'Optimize All %d Images', 'thisismyurl-webp-support' ), count( $pending_ids ) ); ?>
+                                            <?php
+                                            printf(
+                                                /* translators: %d: number of pending images */
+                                                esc_html__( 'Optimize All %d Images', 'thisismyurl-webp-support' ),
+                                                count( $pending_ids )
+                                            );
+                                            ?>
                                         </button>
                                         <button id="btn-cancel" class="button button-secondary button-large" style="display:none;color:#d63638;">
                                             <?php esc_html_e( 'Cancel Batch', 'thisismyurl-webp-support' ); ?>
                                         </button>
                                     </div>
 
-                                    <div id="fwo-progress-container" style="display:none;margin-top:20px;background:#f0f0f1;height:30px;position:relative;border-radius:4px;overflow:hidden;border:1px solid #c3c4c7;">
+                                    <div id="fwo-progress-container"
+                                        role="progressbar"
+                                        aria-valuenow="0"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        aria-label="<?php esc_attr_e( 'Batch optimization progress', 'thisismyurl-webp-support' ); ?>"
+                                        style="display:none;margin-top:20px;background:#f0f0f1;height:30px;position:relative;border-radius:4px;overflow:hidden;border:1px solid #c3c4c7;">
                                         <div id="fwo-progress-bar" style="background:#2271b1;height:100%;width:0%;transition:width 0.2s;"></div>
                                         <div id="fwo-progress-text" style="position:absolute;width:100%;text-align:center;top:0;line-height:30px;font-weight:bold;color:#fff;mix-blend-mode:difference;">0%</div>
                                     </div>
+                                    <div id="fwo-status-region" role="status" aria-live="polite" class="screen-reader-text"></div>
                                     <?php if ( $pending_bytes > 0 || $managed_savings > 0 ) : ?>
                                     <p class="description" style="margin-top:14px;">
                                         <?php
@@ -1169,106 +1547,6 @@ class TIMU_WEBP_Support {
                         </div>
 
                         <div class="postbox">
-                            <h2 class="hndle"><span><?php esc_html_e( 'Conversion Settings', 'thisismyurl-webp-support' ); ?></span></h2>
-                            <div class="inside">
-                                <form method="post" action="options.php">
-                                    <?php settings_fields( self::SETTINGS_GROUP ); ?>
-                                    <?php $avif_ok = self::supports_avif(); ?>
-                                    <table class="form-table" role="presentation">
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Output Format', 'thisismyurl-webp-support' ); ?></th>
-                                            <td>
-                                                <?php
-                                                $output_presets = array(
-                                                    'webp' => __( 'WebP (recommended)', 'thisismyurl-webp-support' ),
-                                                    'avif' => __( 'AVIF (Imagick only)', 'thisismyurl-webp-support' ),
-                                                    'both' => __( 'Both â€” AVIF primary + WebP companion via &lt;picture&gt;', 'thisismyurl-webp-support' ),
-                                                );
-                                                $cur_format = isset( $options['output_format'] ) ? $options['output_format'] : 'webp';
-                                                foreach ( $output_presets as $val => $label ) :
-                                                    $needs_avif = ( 'webp' !== $val );
-                                                ?>
-                                                    <label style="display:block;margin-bottom:4px;">
-                                                        <input type="radio"
-                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[output_format]"
-                                                            value="<?php echo esc_attr( $val ); ?>"
-                                                            <?php checked( $cur_format, $val ); ?>
-                                                            <?php disabled( $needs_avif && ! $avif_ok ); ?> />
-                                                        <?php echo wp_kses( $label, array() ); ?>
-                                                        <?php if ( $needs_avif && ! $avif_ok ) : ?>
-                                                            <em style="color:#d63638;">&mdash; <?php esc_html_e( 'AVIF unavailable: Imagick not installed or missing libheif', 'thisismyurl-webp-support' ); ?></em>
-                                                        <?php endif; ?>
-                                                    </label>
-                                                <?php endforeach; ?>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Quality Preset', 'thisismyurl-webp-support' ); ?></th>
-                                            <td>
-                                                <?php
-                                                $quality_presets = array(
-                                                    'web'      => __( 'Web (82) â€” balanced size/quality', 'thisismyurl-webp-support' ),
-                                                    'print'    => __( 'Print (95) â€” high fidelity', 'thisismyurl-webp-support' ),
-                                                    'lossless' => __( 'Lossless (100)', 'thisismyurl-webp-support' ),
-                                                    'custom'   => __( 'Custom', 'thisismyurl-webp-support' ),
-                                                );
-                                                $cur_preset = isset( $options['quality_preset'] ) ? $options['quality_preset'] : 'web';
-                                                foreach ( $quality_presets as $val => $label ) :
-                                                ?>
-                                                    <label style="display:block;margin-bottom:4px;">
-                                                        <input type="radio"
-                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality_preset]"
-                                                            value="<?php echo esc_attr( $val ); ?>"
-                                                            <?php checked( $cur_preset, $val ); ?>
-                                                            class="timu-preset-radio" />
-                                                        <?php echo esc_html( $label ); ?>
-                                                    </label>
-                                                <?php endforeach; ?>
-                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo 'custom' !== $cur_preset ? 'display:none;' : ''; ?>">
-                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0â€“100):', 'thisismyurl-webp-support' ); ?></label>
-                                                    <input id="timu-quality" type="number" min="0" max="100"
-                                                        name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
-                                                        value="<?php echo esc_attr( $options['quality'] ); ?>"
-                                                        class="small-text" style="margin-left:6px;" />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><label for="timu-batch-size"><?php esc_html_e( 'Batch Size', 'thisismyurl-webp-support' ); ?></label></th>
-                                            <td>
-                                                <input id="timu-batch-size" type="number" min="1" max="100" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[batch_size]" value="<?php echo esc_attr( $options['batch_size'] ); ?>" class="small-text" />
-                                                <p class="description"><?php esc_html_e( 'Number of images processed per AJAX request.', 'thisismyurl-webp-support' ); ?></p>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Enable Conversion For', 'thisismyurl-webp-support' ); ?></th>
-                                            <td>
-                                                <?php foreach ( self::get_extension_mime_map() as $extension => $mime ) : ?>
-                                                    <label style="display:inline-block;min-width:100%;margin-right:12px;">
-                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled_extensions][]" value="<?php echo esc_attr( $extension ); ?>" <?php checked( in_array( $extension, (array) $options['enabled_extensions'], true ) ); ?> />
-                                                        <?php echo esc_html( strtoupper( $extension ) . ' (' . $mime . ')' ); ?>
-                                                    </label>
-                                                <?php endforeach; ?>
-                                                <p class="description"><?php esc_html_e( 'Only enabled formats will appear in Pending Optimizations.', 'thisismyurl-webp-support' ); ?></p>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row"><?php esc_html_e( 'Uninstall Behavior', 'thisismyurl-webp-support' ); ?></th>
-                                            <td>
-                                                <label>
-                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[delete_backups_uninstall]" value="1" <?php checked( ! empty( $options['delete_backups_uninstall'] ) ); ?> />
-                                                    <?php esc_html_e( 'Delete backup files when plugin is uninstalled.', 'thisismyurl-webp-support' ); ?>
-                                                </label>
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                    <?php submit_button( __( 'Save Settings', 'thisismyurl-webp-support' ) ); ?>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="postbox">
                             <h2 class="hndle"><span><?php esc_html_e( 'Pending Optimizations', 'thisismyurl-webp-support' ); ?> (<span id="p-cnt"><?php echo esc_html( count( $pending_ids ) ); ?></span>)</span></h2>
                             <div class="inside">
                                 <table class="widefat striped" id="fwo-pending-table" style="border:none;box-shadow:none;">
@@ -1284,8 +1562,8 @@ class TIMU_WEBP_Support {
                                         <?php if ( ! empty( $lists['pending'] ) ) : ?>
                                             <?php foreach ( $lists['pending'] as $post ) : ?>
                                                 <?php
-                                                $pf   = get_attached_file( $post->ID );
-                                                $psz  = ( $pf && file_exists( $pf ) ) ? size_format( (int) filesize( $pf ), 1 ) : 'â€”';
+                                                $pf  = get_attached_file( $post->ID );
+                                                $psz = ( $pf && file_exists( $pf ) ) ? size_format( (int) filesize( $pf ), 1 ) : '&#8212;';
                                                 ?>
                                                 <tr id="fwo-row-<?php echo esc_attr( $post->ID ); ?>">
                                                     <td><?php echo wp_kses_post( wp_get_attachment_image( $post->ID, array( 50, 50 ) ) ); ?></td>
@@ -1321,7 +1599,7 @@ class TIMU_WEBP_Support {
                                             $orig     = get_post_meta( $post->ID, self::BACKUP_META_KEY, true );
                                             $status   = isset( $post->timu_wsstatus ) ? $post->timu_wsstatus : '';
                                             $savings  = (int) get_post_meta( $post->ID, self::SAVINGS_META_KEY, true );
-                                            $saved_sz = $savings > 0 ? size_format( $savings, 1 ) : 'â€”';
+                                            $saved_sz = $savings > 0 ? size_format( $savings, 1 ) : '&#8212;';
                                             ?>
                                             <tr id="fwo-media-row-<?php echo esc_attr( $post->ID ); ?>">
                                                 <td><?php echo wp_kses_post( wp_get_attachment_image( $post->ID, array( 50, 50 ) ) ); ?></td>
@@ -1330,7 +1608,7 @@ class TIMU_WEBP_Support {
                                                 <td><?php echo esc_html( $saved_sz ); ?></td>
                                                 <td>
                                                     <?php if ( 'missing' === $status ) : ?>
-                                                        <span style="color:#d63638;"><?php esc_html_e( 'File Missing', 'thisismyurl-webp-support' ); ?></span>
+                                                        <span style="color:#d63638;"><span aria-hidden="true">&#9888; </span><strong><?php esc_html_e( 'File Missing', 'thisismyurl-webp-support' ); ?></strong></span>
                                                     <?php elseif ( 'disabled_by_settings' === $status ) : ?>
                                                         <span class="description"><?php esc_html_e( 'Excluded by Settings', 'thisismyurl-webp-support' ); ?></span>
                                                     <?php elseif ( $orig && 'external' !== $orig ) : ?>
@@ -1348,38 +1626,307 @@ class TIMU_WEBP_Support {
                             </div>
                         </div>
 
-                    </div>
+                    </div><!-- #post-body-content -->
 
                     <div id="postbox-container-1" class="postbox-container">
                         <div class="postbox">
-                            <h2 class="hndle"><span><?php esc_html_e( 'Documentation', 'thisismyurl-webp-support' ); ?></span></h2>
+                            <h2 class="hndle"><span><?php esc_html_e( 'About', 'thisismyurl-webp-support' ); ?></span></h2>
                             <div class="inside">
-                                <p><?php esc_html_e( 'This plugin converts JPEG, PNG, GIF, and BMP images into WebP or AVIF using the WordPress image editor stack (GD or Imagick). Originals are moved to a backup directory and can be restored any time.', 'thisismyurl-webp-support' ); ?></p>
-                                <hr />
+                                <p><?php esc_html_e( 'Converts JPEG, PNG, and GIF images to WebP or AVIF using the WordPress image editor (GD or Imagick). Originals are backed up and can be restored any time.', 'thisismyurl-webp-support' ); ?></p>
                                 <?php if ( ! empty( $restorable ) ) : ?>
+                                    <hr />
                                     <p><strong><?php esc_html_e( 'Bulk Actions', 'thisismyurl-webp-support' ); ?></strong></p>
                                     <button id="btn-restore-all" class="button button-secondary" style="width:100%;text-align:center;" data-ids="<?php echo esc_attr( wp_json_encode( $restorable ) ); ?>">
                                         <?php esc_html_e( 'Restore All Originals', 'thisismyurl-webp-support' ); ?>
                                     </button>
-                                    <hr />
                                 <?php endif; ?>
+                                <hr />
                                 <p>
                                     <?php
                                     echo wp_kses_post(
                                         sprintf(
+                                            /* translators: %s: link to thisismyurl.com */
                                             __( 'Provided free by %s.', 'thisismyurl-webp-support' ),
-                                            '<a href="https://thisismyurl.com/" target="_blank" rel="noopener noreferrer">thisismyurl.com</a>'
+                                            '<a href="' . esc_url( $thisismyurl_url ) . '" target="_blank" rel="noopener noreferrer">thisismyurl.com</a>'
                                         )
                                     );
                                     ?>
                                 </p>
-                                <p><a href="<?php echo esc_url( 'https://thisismyurl.com/donate/' ); ?>" class="button button-secondary" target="_blank" rel="noopener noreferrer" style="width:100%;text-align:center;"><?php esc_html_e( 'Donate to Development', 'thisismyurl-webp-support' ); ?></a></p>
+                                <p><a href="<?php echo esc_url( $sponsor_url ); ?>" class="button button-secondary" target="_blank" rel="noopener noreferrer" style="width:100%;text-align:center;"><?php esc_html_e( 'Sponsor development', 'thisismyurl-webp-support' ); ?></a></p>
+                            </div>
+                        </div>
+                    </div><!-- #postbox-container-1 -->
+
+                </div><!-- #post-body -->
+            </div><!-- #poststuff -->
+
+            <?php elseif ( 'settings' === $active_tab ) : /* settings tab */ ?>
+
+            <div id="poststuff" style="padding-top:10px;">
+                <div id="post-body" class="metabox-holder columns-1">
+                    <div id="post-body-content">
+
+                        <div class="postbox">
+                            <h2 class="hndle"><span><?php esc_html_e( 'Conversion Settings', 'thisismyurl-webp-support' ); ?></span></h2>
+                            <div class="inside">
+                                <form method="post" action="options.php">
+                                    <?php settings_fields( self::SETTINGS_GROUP ); ?>
+                                    <?php $avif_ok = self::supports_avif(); ?>
+                                    <table class="form-table" role="presentation">
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Output format', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <fieldset>
+                                                <legend class="screen-reader-text"><?php esc_html_e( 'Output format', 'thisismyurl-webp-support' ); ?></legend>
+                                                <?php
+                                                $output_presets = array(
+                                                    'webp' => __( 'WebP (recommended)', 'thisismyurl-webp-support' ),
+                                                    'avif' => __( 'AVIF (Imagick only)', 'thisismyurl-webp-support' ),
+                                                    'both' => __( 'Both &#8212; AVIF primary + WebP companion via &lt;picture&gt;', 'thisismyurl-webp-support' ),
+                                                );
+                                                $cur_format = isset( $options['output_format'] ) ? $options['output_format'] : 'webp';
+                                                foreach ( $output_presets as $val => $label ) :
+                                                    $needs_avif = ( 'webp' !== $val );
+                                                ?>
+                                                    <label style="display:block;margin-bottom:4px;">
+                                                        <input type="radio"
+                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[output_format]"
+                                                            value="<?php echo esc_attr( $val ); ?>"
+                                                            <?php checked( $cur_format, $val ); ?>
+                                                            <?php disabled( $needs_avif && ! $avif_ok ); ?> />
+                                                        <?php echo wp_kses( $label, array() ); ?>
+                                                        <?php if ( $needs_avif && ! $avif_ok ) : ?>
+                                                            <em style="color:#d63638;">&#8212; <?php esc_html_e( 'AVIF unavailable: Imagick not installed or missing libheif', 'thisismyurl-webp-support' ); ?></em>
+                                                        <?php endif; ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                                </fieldset>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Quality preset', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <fieldset>
+                                                <legend class="screen-reader-text"><?php esc_html_e( 'Quality preset', 'thisismyurl-webp-support' ); ?></legend>
+                                                <?php
+                                                $quality_presets = array(
+                                                    'web'      => __( 'Web (82) &#8212; balanced size/quality', 'thisismyurl-webp-support' ),
+                                                    'print'    => __( 'Print (95) &#8212; high fidelity', 'thisismyurl-webp-support' ),
+                                                    'lossless' => __( 'Lossless (100)', 'thisismyurl-webp-support' ),
+                                                    'custom'   => __( 'Custom', 'thisismyurl-webp-support' ),
+                                                );
+                                                $cur_preset = isset( $options['quality_preset'] ) ? $options['quality_preset'] : 'web';
+                                                foreach ( $quality_presets as $val => $label ) :
+                                                ?>
+                                                    <label style="display:block;margin-bottom:4px;">
+                                                        <input type="radio"
+                                                            name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality_preset]"
+                                                            value="<?php echo esc_attr( $val ); ?>"
+                                                            <?php checked( $cur_preset, $val ); ?>
+                                                            class="timu-preset-radio" />
+                                                        <?php echo esc_html( $label ); ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                                <?php $custom_hidden = ( 'custom' !== $cur_preset ); ?>
+                                                <div id="timu-custom-quality" style="margin-top:8px;<?php echo $custom_hidden ? 'display:none;' : ''; ?>"<?php echo $custom_hidden ? ' aria-hidden="true"' : ''; ?>>
+                                                    <label for="timu-quality"><?php esc_html_e( 'Custom quality (0&#8211;100):', 'thisismyurl-webp-support' ); ?></label>
+                                                    <input id="timu-quality" type="number" min="0" max="100"
+                                                        name="<?php echo esc_attr( self::OPTION_KEY ); ?>[quality]"
+                                                        value="<?php echo esc_attr( $options['quality'] ); ?>"
+                                                        class="small-text" style="margin-left:6px;"
+                                                        <?php disabled( $custom_hidden ); ?> />
+                                                </div>
+                                                </fieldset>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><label for="timu-batch-size"><?php esc_html_e( 'Batch size', 'thisismyurl-webp-support' ); ?></label></th>
+                                            <td>
+                                                <input id="timu-batch-size" type="number" min="1" max="100" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[batch_size]" value="<?php echo esc_attr( $options['batch_size'] ); ?>" class="small-text" />
+                                                <p class="description"><?php esc_html_e( 'Images processed per AJAX request. Lower this if you see timeouts. Default: 10.', 'thisismyurl-webp-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Enable conversion for', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <?php foreach ( self::get_extension_mime_map() as $extension => $mime ) : ?>
+                                                    <label style="display:inline-block;min-width:100%;margin-right:12px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled_extensions][]" value="<?php echo esc_attr( $extension ); ?>" <?php checked( in_array( $extension, (array) $options['enabled_extensions'], true ) ); ?> />
+                                                        <?php echo esc_html( strtoupper( $extension ) . ' (' . $mime . ')' ); ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                                <p class="description"><?php esc_html_e( 'Only enabled formats appear in Pending Optimizations.', 'thisismyurl-webp-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Optimize on upload', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[optimize_on_upload]" value="1" <?php checked( ! empty( $options['optimize_on_upload'] ) ); ?> />
+                                                    <?php esc_html_e( 'Automatically convert new uploads right after upload.', 'thisismyurl-webp-support' ); ?>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Auto optimize', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <fieldset>
+                                                    <label style="display:block;margin-bottom:6px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_enabled]" value="1" <?php checked( ! empty( $options['auto_optimize_enabled'] ) ); ?> />
+                                                        <?php esc_html_e( 'Enable automatic background optimization for pending images.', 'thisismyurl-webp-support' ); ?>
+                                                    </label>
+                                                    <label style="display:block;margin-bottom:6px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_admin]" value="1" <?php checked( ! empty( $options['auto_optimize_admin'] ) ); ?> />
+                                                        <?php esc_html_e( 'Run a small optimization batch during wp-admin page visits.', 'thisismyurl-webp-support' ); ?>
+                                                    </label>
+                                                    <label style="display:block;margin-bottom:10px;">
+                                                        <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_cron]" value="1" <?php checked( ! empty( $options['auto_optimize_cron'] ) ); ?> />
+                                                        <?php esc_html_e( 'Run optimization in WP-Cron.', 'thisismyurl-webp-support' ); ?>
+                                                    </label>
+                                                    <p>
+                                                        <label for="timu-auto-batch" style="margin-right:8px;"><?php esc_html_e( 'Images per auto run:', 'thisismyurl-webp-support' ); ?></label>
+                                                        <input id="timu-auto-batch" type="number" min="1" max="25" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_batch]" value="<?php echo esc_attr( $options['auto_optimize_batch'] ); ?>" class="small-text" />
+                                                    </p>
+                                                    <p>
+                                                        <label for="timu-auto-interval" style="margin-right:8px;"><?php esc_html_e( 'WP-Cron interval:', 'thisismyurl-webp-support' ); ?></label>
+                                                        <select id="timu-auto-interval" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[auto_optimize_interval]">
+                                                            <option value="fifteen_minutes" <?php selected( 'fifteen_minutes', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Every 15 minutes', 'thisismyurl-webp-support' ); ?></option>
+                                                            <option value="hourly" <?php selected( 'hourly', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Hourly', 'thisismyurl-webp-support' ); ?></option>
+                                                            <option value="twicedaily" <?php selected( 'twicedaily', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Twice daily', 'thisismyurl-webp-support' ); ?></option>
+                                                            <option value="daily" <?php selected( 'daily', $options['auto_optimize_interval'] ); ?>><?php esc_html_e( 'Daily', 'thisismyurl-webp-support' ); ?></option>
+                                                        </select>
+                                                    </p>
+                                                    <p class="description"><?php esc_html_e( 'Enable one or both triggers: admin traffic, cron, or both.', 'thisismyurl-webp-support' ); ?></p>
+                                                </fieldset>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><label for="timu-per-page"><?php esc_html_e( 'Items per page', 'thisismyurl-webp-support' ); ?></label></th>
+                                            <td>
+                                                <input id="timu-per-page" type="number" min="5" max="500" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[list_per_page]" value="<?php echo esc_attr( $options['list_per_page'] ); ?>" class="small-text" />
+                                                <p class="description"><?php esc_html_e( 'How many images to show per page in the Pending and Managed Media lists. Default: 25.', 'thisismyurl-webp-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Report assumptions', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <p>
+                                                    <label for="timu-monthly-hits" style="display:inline-block;min-width:240px;"><?php esc_html_e( 'Estimated monthly image requests', 'thisismyurl-webp-support' ); ?></label>
+                                                    <input id="timu-monthly-hits" type="number" min="0" max="100000000" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[report_monthly_image_hits]" value="<?php echo esc_attr( $options['report_monthly_image_hits'] ); ?>" class="regular-text" style="max-width:180px;" />
+                                                </p>
+                                                <p>
+                                                    <label for="timu-cost-gb" style="display:inline-block;min-width:240px;"><?php esc_html_e( 'Bandwidth cost per GB (USD)', 'thisismyurl-webp-support' ); ?></label>
+                                                    <input id="timu-cost-gb" type="number" min="0" max="10" step="0.01" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[report_bandwidth_cost_gb]" value="<?php echo esc_attr( $options['report_bandwidth_cost_gb'] ); ?>" class="regular-text" style="max-width:180px;" />
+                                                </p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'Outbound UTM parameters', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[track_outbound_utms]" value="1" <?php checked( ! empty( $options['track_outbound_utms'] ) ); ?> />
+                                                    <?php esc_html_e( 'Add privacy-safe UTM parameters to links to thisismyurl.com.', 'thisismyurl-webp-support' ); ?>
+                                                </label>
+                                                <p class="description"><?php esc_html_e( 'These UTMs include no site IDs, account IDs, user IDs, visitor data, or domain names. They only identify this plugin as the traffic source.', 'thisismyurl-webp-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row"><?php esc_html_e( 'On uninstall', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <label>
+                                                    <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[delete_backups_uninstall]" value="1" <?php checked( ! empty( $options['delete_backups_uninstall'] ) ); ?> />
+                                                    <?php esc_html_e( 'Delete all backup files when the plugin is uninstalled.', 'thisismyurl-webp-support' ); ?>
+                                                </label>
+                                                <p class="description"><?php esc_html_e( 'Leave unchecked to keep originals in the backup directory even after removing the plugin.', 'thisismyurl-webp-support' ); ?></p>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <?php submit_button( __( 'Save Settings', 'thisismyurl-webp-support' ) ); ?>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div><!-- #post-body-content -->
+                </div><!-- #post-body -->
+            </div><!-- #poststuff -->
+
+            <?php else : /* report tab */ ?>
+
+            <?php
+            $report_range = isset( $_GET['range'] ) ? sanitize_key( (string) $_GET['range'] ) : '30d'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if ( ! in_array( $report_range, array( '30d', '90d', '365d', 'all' ), true ) ) {
+                $report_range = '30d';
+            }
+            $report_data = self::get_report_metrics( $report_range );
+            ?>
+
+            <div id="poststuff" style="padding-top:10px;">
+                <div id="post-body" class="metabox-holder columns-1">
+                    <div id="post-body-content">
+                        <div class="postbox">
+                            <h2 class="hndle"><span><?php esc_html_e( 'Business ROI report', 'thisismyurl-webp-support' ); ?></span></h2>
+                            <div class="inside">
+                                <p class="description"><?php esc_html_e( 'Use these metrics to show the measurable value this plugin has provided over business-friendly time windows.', 'thisismyurl-webp-support' ); ?></p>
+                                <p>
+                                    <a class="button <?php echo '30d' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => '30d' ), $base_url ) ); ?>"><?php esc_html_e( 'Last 30 days', 'thisismyurl-webp-support' ); ?></a>
+                                    <a class="button <?php echo '90d' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => '90d' ), $base_url ) ); ?>"><?php esc_html_e( 'Last 90 days', 'thisismyurl-webp-support' ); ?></a>
+                                    <a class="button <?php echo '365d' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => '365d' ), $base_url ) ); ?>"><?php esc_html_e( 'Last 12 months', 'thisismyurl-webp-support' ); ?></a>
+                                    <a class="button <?php echo 'all' === $report_range ? 'button-primary' : 'button-secondary'; ?>" href="<?php echo esc_url( add_query_arg( array( 'tab' => 'report', 'range' => 'all' ), $base_url ) ); ?>"><?php esc_html_e( 'All time', 'thisismyurl-webp-support' ); ?></a>
+                                </p>
+
+                                <table class="widefat striped" style="max-width:960px;">
+                                    <tbody>
+                                        <tr>
+                                            <th style="width:340px;"><?php esc_html_e( 'Images optimized in period', 'thisismyurl-webp-support' ); ?></th>
+                                            <td><?php echo esc_html( number_format_i18n( (int) $report_data['converted_count'] ) ); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Total bandwidth saved (if each image is requested once)', 'thisismyurl-webp-support' ); ?></th>
+                                            <td><?php echo esc_html( size_format( (int) $report_data['bytes_saved'], 2 ) ); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Average savings per image', 'thisismyurl-webp-support' ); ?></th>
+                                            <td><?php echo esc_html( number_format_i18n( (float) $report_data['avg_saved_kb'], 2 ) . ' KB' ); ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Estimated monthly ROI', 'thisismyurl-webp-support' ); ?></th>
+                                            <td>
+                                                <?php
+                                                echo esc_html(
+                                                    sprintf(
+                                                        /* translators: 1: monthly savings, 2: annual savings */
+                                                        __( '$%1$s / month (about $%2$s / year)', 'thisismyurl-webp-support' ),
+                                                        number_format_i18n( (float) $report_data['monthly_roi'], 2 ),
+                                                        number_format_i18n( (float) $report_data['annual_roi'], 2 )
+                                                    )
+                                                );
+                                                ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p class="description" style="margin-top:10px;">
+                                    <?php
+                                    echo esc_html(
+                                        sprintf(
+                                            /* translators: 1: image hit count, 2: cost per GB */
+                                            __( 'ROI estimate uses %1$s image requests/month and $%2$s bandwidth cost per GB from your settings.', 'thisismyurl-webp-support' ),
+                                            number_format_i18n( (int) $report_data['monthly_hits'] ),
+                                            number_format_i18n( (float) $report_data['cost_per_gb'], 2 )
+                                        )
+                                    );
+                                    ?>
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            <?php endif; ?>
+
+        </div><!-- .wrap -->
         <?php
     }
 }
@@ -1388,7 +1935,7 @@ class TIMU_WEBP_Support {
  * Minimal direct-PHP filesystem shim used when WP_Filesystem refuses to
  * initialise (typically a host that wants FTP/SSH credentials and gives us
  * no UI to surface them). Implements the methods this plugin actually calls
- * â€” `exists`, `delete`, `move` â€” with the same return shapes WP_Filesystem
+ * -- `exists`, `delete`, `move` -- with the same return shapes WP_Filesystem
  * uses, so callers don't need to branch on which backend they got.
  *
  * Only acceptable here because every entry point that touches the filesystem
@@ -1478,5 +2025,11 @@ class TIMU_WEBP_Direct_FS {
 if ( defined( 'WP_CLI' ) && WP_CLI ) {
     require_once plugin_dir_path( __FILE__ ) . 'includes/class-timu-webp-cli.php';
 }
+
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-backup-adapter.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/abilities.php';
+
+register_activation_hook( __FILE__, array( 'TIMU_WEBP_Support', 'activate_plugin' ) );
+register_deactivation_hook( __FILE__, array( 'TIMU_WEBP_Support', 'deactivate_plugin' ) );
 
 TIMU_WEBP_Support::init();

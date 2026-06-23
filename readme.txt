@@ -1,56 +1,60 @@
-=== WEBP Support by thisismyurl.com ===
+=== - WEBP Support by Christopher Ross ===
 Contributors: thisismyurl
-Donate link: https://thisismyurl.com/donate/
-Tags: webp, images, media, optimization, compression
+Donate link: https://github.com/sponsors/thisismyurl
+Tags: webp, avif, images, media, optimization
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 0.6174.1641
+Stable tag: 1.6165.0822
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Non-destructive WebP/AVIF conversion for Media Library images with safe backups and one-click restore.
+Non-destructive WebP/AVIF conversion for Media Library images with safe backups, one-click restore, automatic optimization, and an ROI report.
 
 == Description ==
 
-WEBP Support by thisismyurl.com converts supported Media Library attachments (JPEG, PNG, GIF, BMP) to WebP using the WordPress image editor stack (GD or Imagick). Originals are preserved in a backup directory under `uploads/webp-backups/` and can be restored at any time, individually or in bulk.
+WEBP Support by thisismyurl.com converts supported Media Library attachments (JPEG, PNG, GIF) to WebP or AVIF using the WordPress image editor stack (GD or Imagick). Originals are preserved in a backup directory under `uploads/webp-backups/` and can be restored at any time, individually or in bulk.
 
-What this plugin actually ships:
+The Tools > WebP Support screen is organised into three tabs:
 
-* Tools > WebP Support page with Optimize, Settings, Pending, and Managed Media sections.
-* Output Format setting: WebP (default), AVIF (Imagick + libheif required), or Both (AVIF primary + WebP companion via &lt;picture&gt;).
-* Quality Preset setting: Web (82), Print (95), Lossless (100), or Custom.
-* Per-format conversion toggles for JPG/JPEG, PNG, GIF, and BMP.
-* Non-destructive batch optimization with progress bar, savings display, and cancel.
-* Pending table shows per-image file sizes; Managed table shows bytes saved per image.
+* **Optimize** — the conversion dashboard, the pending-images list with file sizes, and the managed-media list with per-image savings.
+* **Settings** — output format, quality preset, batch size, per-format toggles, optimize-on-upload, background auto-optimize, report assumptions, outbound UTM, and uninstall behaviour.
+* **Report** — a business ROI table across Last 30 Days, Last 90 Days, Last 12 Months, and All Time windows.
+
+What this plugin ships:
+
+* Tabbed Optimize / Settings / Report admin screen under Tools > WebP Support.
+* Output format: WebP (default), AVIF (Imagick + libheif required), or Both (AVIF primary + WebP companion served via a `<picture>` element).
+* Quality preset: Web (82), Print (95), Lossless (100), or Custom.
+* Per-format conversion toggles for JPG/JPEG, PNG, and GIF.
+* Non-destructive batch optimization with a progress bar, savings display, cancel, and per-table search and pagination.
+* Optimize-on-upload: convert new uploads automatically right after they land.
+* Background auto-optimize: process pending images during wp-admin visits, in WP-Cron, or both, on a configurable interval and batch size.
+* Business ROI report estimating bandwidth saved and the bandwidth cost avoided, from assumptions you set.
 * Single Restore button per managed image and a Restore All bulk action.
 * Status flags for missing files and items excluded by current settings.
 * Per-attachment lock so two operators or two browser tabs cannot race the same file.
+* Backup paths stored relative to the uploads directory so dev/prod database copies survive migration.
 * Attachment metadata regenerated after each conversion or restoration.
 * Optional backup-folder cleanup on uninstall.
 * WP-CLI commands: `wp webp convert`, `wp webp restore`, `wp webp status`.
+* WordPress 7.0 Abilities API support for the convert and restore operations.
 * Localization support: French (Canada) translation included.
-
-What this plugin does NOT do (and never has — earlier readme drafts overstated the scope):
-
-* No tabbed UI, no ROI report, no analytics surface.
-* No optimize-on-upload, no background auto-optimize, no WP-Cron scheduler.
-* No EXIF / GPS / metadata stripping.
-* No outbound UTM tagging.
-* No theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
 
 How it works:
 
 1. Go to Tools > WebP Support.
-2. Set quality, batch size, enabled formats, and uninstall behaviour.
-3. Click "Optimize All" to process pending attachments in AJAX batches.
+2. On the Settings tab, choose output format, quality preset, batch size, enabled formats, and optimization behaviour.
+3. On the Optimize tab, click "Optimize All" to process pending attachments in AJAX batches, or let auto-optimize work in the background.
 4. Use Restore on individual rows, or "Restore All Originals" for a bulk rollback.
+5. Open the Report tab to see bandwidth saved and estimated ROI.
 
 Notes:
 
 * Uses the WordPress image editor stack (GD or Imagick). No external services or phone-home.
-* Existing WebP attachments are flagged as externally managed and never overwritten.
-* Backup paths are stored relative to the uploads directory so dev↔prod database copies survive migration.
+* AVIF output requires Imagick built with libheif; without it, AVIF and Both are unavailable and the plugin falls back to WebP.
+* Existing WebP and AVIF attachments are flagged as externally managed and never overwritten.
+* Outbound UTM parameters are static and privacy-safe: they identify only this plugin as the traffic source and carry no site, account, user, visitor, or domain data.
 
 == Installation ==
 
@@ -65,16 +69,22 @@ Notes:
 No. Originals are moved to `uploads/webp-backups/` and can be restored.
 
 = What image types are supported? =
-JPEG, PNG, GIF, and BMP as conversion sources.
+JPEG, PNG, and GIF as conversion sources.
+
+= Can images be converted automatically? =
+Yes. Enable optimize-on-upload to convert new uploads as they arrive, and enable background auto-optimize (admin traffic, WP-Cron, or both) to work through the existing library.
 
 = Can I control performance and quality? =
-Yes. WebP quality and AJAX batch size are configurable in Tools > WebP Support.
+Yes. Quality preset, custom quality, and AJAX batch size are configurable in Tools > WebP Support.
 
 = Can I choose which image types are converted? =
-Yes. Per-format toggles for JPG/JPEG, PNG, GIF, and BMP.
+Yes. Per-format toggles for JPG/JPEG, PNG, and GIF.
 
 = Does this require Imagick? =
-No. It uses WordPress image editors and works with either GD or Imagick.
+No for WebP — it uses WordPress image editors and works with either GD or Imagick. AVIF output does require Imagick built with libheif.
+
+= What is the Report tab? =
+A business ROI estimate. It counts images optimized in the selected window, totals the bytes saved, and projects monthly and annual bandwidth-cost savings from the monthly-requests and cost-per-GB assumptions you set on the Settings tab.
 
 = Is there a WP-CLI interface? =
 Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status`.
@@ -85,9 +95,36 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 
 == Changelog ==
 
-= 0.6174.1641 =
-* Added dashboard widget (WebP Support) showing total disk saved, estimated bandwidth saved, images managed, and a link to the Tools page.
-* Dashboard widget is gated to users with the `upload_files` capability.
+= 1.6165.0822 =
+* New tabbed Optimize / Settings / Report admin screen, matching the rest of the thisismyurl.com image-plugin family.
+* Added optimize-on-upload and background auto-optimize (admin-tick and WP-Cron) with a configurable interval and per-run batch size.
+* Added the Business ROI report: bandwidth saved and estimated monthly/annual savings across 30-day, 90-day, 12-month, and all-time windows.
+* Added Items-Per-Page, report-assumption, and outbound-UTM settings; conversion writes a converted-at timestamp so the report can window by date.
+* Wired the shared backup adapter into the batch, auto-optimize, and per-file convert/restore paths as an extra safety snapshot.
+* Dropped BMP from the source-format set; JPEG, PNG, and GIF are the supported sources.
+* Uninstall now also removes the converted-at meta and environment-status option and clears the auto-optimize cron event.
+
+= 1.6151 =
+* Uninstall: the companion-path meta (`_webp_companion_path`) written for "Both" (AVIF + WebP) attachments is now removed on uninstall, alongside the original-path and savings meta, so no orphan post meta survives.
+
+= 1.6150 =
+* Accessibility (WCAG 2.2 AA): the optimization progress bar now exposes `role="progressbar"` with `aria-valuenow/min/max` and an accessible label, and the admin script keeps `aria-valuenow` in sync with the visual width.
+* Accessibility: added a polite `role="status"` live region so screen readers announce batch progress, results, and completion.
+* Accessibility: the "File Missing" status now carries a non-colour cue (warning icon and bold text) instead of signalling state by red colour alone.
+* Accessibility: the Output Format and Quality Preset radio groups are wrapped in `<fieldset>` with a screen-reader `<legend>` for a programmatic group name.
+* Accessibility: the custom-quality field is hidden from assistive technology and disabled when the Custom preset is not selected, and restored when it is.
+
+= 1.6149 =
+* Added WordPress 7.0 Abilities API support: `thisismyurl-webp-support/convert` (batch conversion) and `thisismyurl-webp-support/restore` (restore originals from backups), both guarded by the `manage_options` capability.
+
+= 1.6147 =
+* Unified plugin versioning to the x.Yddd calendar-version scheme.
+* Confirmed compatibility with WordPress 7.0.
+
+
+= 1.6143 =
+* First full release (class 1). The 0.6xxx line was pre-release on the `x.Yddd` scheme.
+* Standardized the donation link to GitHub Sponsors.
 
 = 0.6126 =
 * Added Output Format setting: WebP (default), AVIF (Imagick + libheif), or Both (AVIF + WebP via picture element).
@@ -108,10 +145,7 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 * README and readme.txt rewritten to describe only what ships.
 * Added CHANGELOG.md and `.distignore`.
 
-= 0.6115 =
-* Earlier release. The 0.6115 changelog claimed several features (tabbed UI, ROI report, optimize-on-upload, background auto-optimize, EXIF stripping, UTM tagging, search/pagination) that were never present in the code. Those claims have been retracted.
-
 == Upgrade Notice ==
 
-= 0.6123 =
-Audit-batch release. Removes the broken theme-image feature, fixes a memory ceiling on the Tools page, adds per-attachment locking and WP-CLI commands. README aligned with what actually ships.
+= 1.6160 =
+Adds the tabbed Optimize/Settings/Report admin screen, automatic optimization (on-upload, admin-tick, and WP-Cron), and a business ROI report. Drops BMP from the source-format set.

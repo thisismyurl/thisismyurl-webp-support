@@ -5,11 +5,11 @@ All notable changes to **WEBP Support by thisismyurl.com** are documented here.
 The version scheme is `x.Yddd` — `x` = release class (`0` = pre-release, `1` = full),
 `Y` = last digit of the year, `ddd` = Julian day. So `0.6123` = 2026 Julian day 123.
 
-## 0.6174.1641 — 2026-06-23
+## 1.6143 — 2026-05-23
 
-### Added
-
-- **Dashboard widget** (`timu_webp_savings_widget`): registers a WordPress admin dashboard widget titled "WebP Support" for users with the `upload_files` capability. Shows number of images converted, total disk space saved (formatted), and an estimated bandwidth saved (70 % of disk saving as a simple proxy). Links to the Tools > WebP Support page. Queries via `get_posts()` with `posts_per_page=500` — never `-1`. All output escaped; labels translatable.
+### Changed
+- Promoted to a full release (class 1). The `0.6xxx` line was pre-release on the `x.Yddd` scheme.
+- Standardized the donation link to GitHub Sponsors (`https://github.com/sponsors/thisismyurl`).
 
 ## 0.6126 — 2026-05-06
 
