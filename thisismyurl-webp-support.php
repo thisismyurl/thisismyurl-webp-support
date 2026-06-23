@@ -3,7 +3,7 @@
  * Plugin Name:       WEBP Support by thisismyurl.com
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
- * Version:           0.6126
+ * Version:           0.6174.1641
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
@@ -53,6 +53,7 @@ class TIMU_WEBP_Support {
         add_action( 'wp_ajax_timu_wsrestore_single', array( __CLASS__, 'ajax_restore_single' ) );
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
         add_filter( 'wp_get_attachment_image', array( __CLASS__, 'maybe_wrap_picture' ), 10, 5 );
+        add_action( 'wp_dashboard_setup', array( __CLASS__, 'register_dashboard_widget' ) );
 
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             \WP_CLI::add_command( 'webp', 'TIMU_WEBP_Support_CLI' );
@@ -949,6 +950,91 @@ class TIMU_WEBP_Support {
     }
 
     /**
+     * Register the dashboard widget for users with the upload_files capability.
+     *
+     * @return void
+     */
+    public static function register_dashboard_widget() {
+        if ( ! current_user_can( 'upload_files' ) ) {
+            return;
+        }
+
+        wp_add_dashboard_widget(
+            'timu_webp_savings_widget',
+            __( 'WebP Support', 'thisismyurl-webp-support' ),
+            array( __CLASS__, 'render_dashboard_widget' )
+        );
+    }
+
+    /**
+     * Render the dashboard widget body showing cumulative conversion savings.
+     *
+     * Queries up to 500 attachment IDs that carry _webp_savings meta, sums the
+     * saved byte counts, and displays: converted image count, total disk saved,
+     * and an estimated bandwidth saving (70 % proxy).
+     *
+     * @return void
+     */
+    public static function render_dashboard_widget() {
+        if ( ! current_user_can( 'upload_files' ) ) {
+            return;
+        }
+
+        $ids = get_posts(
+            array(
+                'post_type'              => 'attachment',
+                'post_status'            => 'inherit',
+                'posts_per_page'         => 500,
+                'fields'                 => 'ids',
+                'meta_key'               => self::SAVINGS_META_KEY,
+                'no_found_rows'          => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            )
+        );
+
+        $count        = 0;
+        $total_bytes  = 0;
+
+        foreach ( $ids as $id ) {
+            $saved = (int) get_post_meta( $id, self::SAVINGS_META_KEY, true );
+            if ( $saved > 0 ) {
+                ++$count;
+                $total_bytes += $saved;
+            }
+        }
+
+        $bandwidth_bytes = (int) round( $total_bytes * 0.7 );
+
+        if ( 0 === $count ) {
+            echo '<p>' . esc_html__( 'No images have been converted yet.', 'thisismyurl-webp-support' ) . '</p>';
+            return;
+        }
+
+        ?>
+        <ul style="margin:0;padding:0;list-style:none;">
+            <li>
+                <strong><?php esc_html_e( 'Images converted:', 'thisismyurl-webp-support' ); ?></strong>
+                <?php echo esc_html( number_format_i18n( $count ) ); ?>
+            </li>
+            <li>
+                <strong><?php esc_html_e( 'Total disk saved:', 'thisismyurl-webp-support' ); ?></strong>
+                <?php echo esc_html( size_format( $total_bytes, 2 ) ); ?>
+            </li>
+            <li>
+                <strong><?php esc_html_e( 'Est. bandwidth saved:', 'thisismyurl-webp-support' ); ?></strong>
+                <?php echo esc_html( size_format( $bandwidth_bytes, 2 ) ); ?>
+            </li>
+        </ul>
+        <p style="margin-top:8px;">
+            <a href="<?php echo esc_url( admin_url( 'tools.php?page=webp-optimizer' ) ); ?>">
+                <?php esc_html_e( 'Manage images', 'thisismyurl-webp-support' ); ?> &rarr;
+            </a>
+        </p>
+        <?php
+    }
+
+    /**
      * Render the admin page.
      *
      * @return void
@@ -1072,7 +1158,7 @@ class TIMU_WEBP_Support {
                                                 /* translators: 1: savings size formatted, 2: image count */
                                                 esc_html__( 'Saved: %1$s across %2$d image(s).', 'thisismyurl-webp-support' ),
                                                 esc_html( size_format( $managed_savings, 2 ) ),
-                                                $managed_savings_count
+                                                (int) $managed_savings_count
                                             );
                                         }
                                         ?>
@@ -1394,13 +1480,3 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 }
 
 TIMU_WEBP_Support::init();
-
-require_once plugin_dir_path( __FILE__ ) . 'github-updater.php';
-
-timu_boot_github_release_updater(
-    array(
-        'plugin_file' => __FILE__,
-        'slug'        => 'thisismyurl-webp-support',
-        'repo'        => 'thisismyurl/thisismyurl-webp-support',
-    )
-);

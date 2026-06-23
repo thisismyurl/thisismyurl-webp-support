@@ -3,9 +3,9 @@ Contributors: thisismyurl
 Donate link: https://thisismyurl.com/donate/
 Tags: webp, images, media, optimization, compression
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 0.6126
+Stable tag: 0.6174.1641
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,10 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 
 == Changelog ==
 
+= 0.6174.1641 =
+* Added dashboard widget (WebP Support) showing total disk saved, estimated bandwidth saved, images managed, and a link to the Tools page.
+* Dashboard widget is gated to users with the `upload_files` capability.
+
 = 0.6126 =
 * Added Output Format setting: WebP (default), AVIF (Imagick + libheif), or Both (AVIF + WebP via picture element).
 * Added Quality Preset setting: Web (82), Print (95), Lossless (100), or Custom.
@@ -100,7 +104,7 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 * Backup paths now stored relative to uploads basedir for migration safety; legacy absolute paths still readable.
 * Filesystem API initialisation falls back to direct PHP file ops on hosts that prompt for FTP credentials (admin-`manage_options` gated).
 * Added WP-CLI commands `wp webp convert`, `wp webp restore`, `wp webp status`.
-* Bumped Tested up to 6.9, Requires PHP 8.1.
+* Bumped Tested up to 6.8, Requires PHP 8.1.
 * README and readme.txt rewritten to describe only what ships.
 * Added CHANGELOG.md and `.distignore`.
 
