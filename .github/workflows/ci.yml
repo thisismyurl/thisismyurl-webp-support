@@ -38,9 +38,10 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          tools: phpcs, wp-coding-standards/wpcs
-      - name: Configure PHPCS
-        run: phpcs --config-set installed_paths $(composer config home)/vendor/wp-coding-standards/wpcs
+          tools: phpcs
+      - name: Install WordPress Coding Standards
+        run: |
+          composer global require wp-coding-standards/wpcs dealerdirect/phpcodesniffer-composer-installer
+          phpcs --config-set installed_paths "$(composer global config home)/vendor/wp-coding-standards/wpcs"
       - name: Run PHPCS
         run: phpcs --standard=WordPress --extensions=php --ignore=assets,vendor,github-updater.php .
-

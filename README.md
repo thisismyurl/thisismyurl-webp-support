@@ -1,87 +1,43 @@
-# WEBP Support by This Is My URL
+# WebP Support
 
-[![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml) [![WordPress Tested](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0-blue)](LICENSE)
+[![CI](https://github.com/thisismyurl/thisismyurl-webp-support/actions/workflows/ci.yml/badge.svg)](https://github.com/thisismyurl/thisismyurl-webp-support/actions) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-blue.svg)](https://wordpress.org/) [![License](https://img.shields.io/badge/License-GPL--2.0--or--later-green.svg)](LICENSE)
 
-Current version: **0.6126**
+WebP Support lets WordPress accept WebP uploads and converts your existing JPEG and PNG images to WebP, keeping the originals so you can restore any image later.
 
-A WordPress plugin that converts Media Library attachments (JPEG, PNG, GIF, BMP) to WebP or AVIF non-destructively, with safe backups and one-click restore. Built for site owners who want modern image formats without giving up the ability to roll back.
+It is part of the same image-plugin family as BMP, HEIC, and SVG Support, and shares the same admin shell, so the settings screens work the same way across all of them.
 
-## What It Does
+## What it does
 
-- Tools > WebP Support page with Optimize, Settings, Pending, and Managed Media sections.
-- **Output Format** setting: WebP (default), AVIF (requires Imagick with libheif), or Both (AVIF primary + WebP companion via `<picture>` for format negotiation).
-- **Quality Preset** setting: Web (82), Print (95), Lossless (100), or Custom.
-- Per-format conversion toggles for JPG/JPEG, PNG, GIF, and BMP.
-- Non-destructive batch conversion with progress bar, savings stats, and a working Cancel.
-- Pending table shows per-image file sizes; Managed Media table shows bytes saved.
-- Single-image Restore plus a Restore All Originals bulk action.
-- Per-attachment lock so two operators (or two browser tabs) cannot race the same file.
-- Attachment metadata regenerated after each conversion or restoration.
-- Optional backup-folder cleanup on uninstall.
-- WP-CLI: `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status`.
-- French (Canada) translation included (`fr_CA`).
-
-## What It Does Not Do
-
-The 0.6115 README listed several features that were never in the code. Those claims have been retracted. This plugin does **not** ship:
-
-- A tabbed admin UI or ROI report.
-- Optimize-on-upload, background auto-optimize, or WP-Cron scheduling.
-- EXIF / GPS / metadata stripping.
-- Outbound UTM tagging.
-- Theme-image conversion (removed in 0.6123 — incompatible with managed hosts).
-
-If you need any of those, this is not the plugin for you. Open an issue if you'd like one of them added.
+- Accepts `.webp` uploads, with the file type checked against its real MIME signature rather than the extension
+- Converts your existing JPEG and PNG library to WebP in bulk
+- Keeps every original file and lets you restore images one at a time
+- Converts incoming images at upload time, so new uploads land as WebP without a separate step
+- Runs large libraries in the background, using either WP-Cron or wp-admin traffic to work through the queue
+- Reports the file size savings across time windows so you can see what the conversion recovered
+- Takes a safety snapshot before any destructive operation when a compatible backup plugin (Vault or Shadow) is active
 
 ## Requirements
 
-- WordPress 6.0 or later
-- PHP 8.1 or later
-- WordPress image editor support (GD or Imagick)
+- WordPress 6.0+
+- PHP 7.4+
+- GD or Imagick. GD handles most conversions; Imagick is needed for the metadata features.
 
 ## Installation
 
-1. Copy this plugin into your plugins directory as `thisismyurl-webp-support/`.
-2. Activate **WEBP Support by This Is My URL** in `wp-admin > Plugins`.
-3. Open `Tools > WebP Support`.
-4. Configure quality, batch size, and enabled source formats.
-5. Click **Optimize All** to start.
-
-## How Backup and Restore Works
-
-- On conversion the original is moved to `uploads/webp-backups/<original-subdir>/`.
-- The attachment record is updated to point at the new `.webp` file.
-- Backup paths are stored relative to `uploads/basedir/` so dev↔prod database copies survive migration. Legacy absolute paths from earlier versions are still understood on read.
-- Restoring moves the original back, deletes the WebP, and regenerates metadata.
-
-## Security and Standards
-
-- Direct-access protection (`ABSPATH` check).
-- Nonce verification on every AJAX action.
-- `current_user_can( 'manage_options' )` capability checks on every admin / AJAX handler.
-- Output escaping and input sanitization aligned with WordPress Coding Standards.
-- Settings API used with a sanitization callback.
-- No external services. No phone-home. No telemetry.
+1. Upload the plugin to `/wp-content/plugins/thisismyurl-webp-support/`.
+2. Activate it through the Plugins screen.
+3. Go to **Tools > WebP Support** to configure your conversion settings.
 
 ## Versioning
 
-This plugin uses the format `x.Yddd`:
+Versions follow `X.Yjjj.hhmm` — year, Julian day, 24-hour time of the build.
 
-- `x` = release class (`0` pre-release, `1` full release)
-- `Y` = last digit of the year
-- `ddd` = Julian day of the release
+## About
 
-`0.6123` = pre-release built on Julian day 123 of 2026 (May 3).
+WebP Support is built and maintained by [Christopher Ross](https://thisismyurl.com/). I build focused WordPress tools for problems that keep showing up across real sites. No tracking, no ads, no upsells.
 
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md).
+**WordPress.org:** [profiles.wordpress.org/thisismyurl](https://profiles.wordpress.org/thisismyurl/) · **GitHub:** [github.com/thisismyurl](https://github.com/thisismyurl) · **LinkedIn:** [linkedin.com/in/thisismyurl](https://linkedin.com/in/thisismyurl)
 
 ## License
 
 GPL-2.0-or-later. See [LICENSE](LICENSE).
-
-
----
-*This project follows the [10 Core Pillars](PILLARS.md). Support quality work [here](https://github.com/sponsors/thisismyurl).*
-
