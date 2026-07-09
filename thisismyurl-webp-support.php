@@ -14,7 +14,6 @@
  *
  * @package TIMU_WEBP_Support
  */
- 
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
