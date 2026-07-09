@@ -5,6 +5,16 @@ All notable changes to **WEBP Support by thisismyurl.com** are documented here.
 The version scheme is `x.Yddd` — `x` = release class (`0` = pre-release, `1` = full),
 `Y` = last digit of the year, `ddd` = Julian day. So `0.6123` = 2026 Julian day 123.
 
+## 1.6190.1610 — 2026-07-09
+
+### Added
+- **Vortops cloud conversion** — when AVIF output is configured but the server lacks Imagick with libheif, a Vortops API key can be entered in Settings to enable cloud AVIF conversion. Local conversion is always preferred; Vortops is a fallback, not a default.
+- Vortops Settings postbox with API key field, test-connection button, and honest capability messaging.
+- `TIMU_Vortops_Client` shared client class (`includes/class-timu-vortops-client.php`).
+
+### Fixed
+- `TIMU_WEBP_VERSION` constant was out of sync with the plugin header (was `1.6165.0822`); corrected to `1.6190.1610`.
+
 ## 1.6190.1540 — 2026-07-09
 
 ### Changed

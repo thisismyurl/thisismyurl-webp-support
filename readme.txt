@@ -5,7 +5,7 @@ Tags: webp, avif, images, media, optimization
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 1.6190.1540
+Stable tag: 1.6190.1610
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -94,6 +94,11 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 * French (Canada) — Christopher Ross
 
 == Changelog ==
+
+= 1.6190.1610 =
+* **New:** Vortops cloud conversion section in Settings — when AVIF output is selected but the server lacks Imagick with libheif, connecting a Vortops account enables cloud AVIF conversion. Local conversion is always preferred. Zero-pressure offering.
+* **New:** Test connection button for Vortops API key.
+* **Fix:** Version constant `TIMU_WEBP_VERSION` was out of sync with the plugin header (stuck at 1.6165.0822); corrected to match the current version.
 
 = 1.6190.1540 =
 * **Hygiene:** UX consistency pass — "Donate" links updated to "Sponsor" to match GitHub Sponsors; sentence-case applied to changelog date ranges.
