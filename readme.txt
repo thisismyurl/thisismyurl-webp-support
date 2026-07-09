@@ -1,4 +1,4 @@
-=== - WEBP Support by Christopher Ross ===
+=== WEBP Support by Christopher Ross ===
 Contributors: thisismyurl
 Donate link: https://github.com/sponsors/thisismyurl
 Tags: webp, avif, images, media, optimization
