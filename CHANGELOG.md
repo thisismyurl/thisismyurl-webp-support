@@ -5,6 +5,16 @@ All notable changes to **WEBP Support by thisismyurl.com** are documented here.
 The version scheme is `x.Yddd` — `x` = release class (`0` = pre-release, `1` = full),
 `Y` = last digit of the year, `ddd` = Julian day. So `0.6123` = 2026 Julian day 123.
 
+## 1.6190.1650 — 2026-07-09
+
+### Changed
+- **Suite core refactor** — Vortops client, settings UI, and event recording moved to `class-timu-suite-core.php`. Single canonical source synced across all thisismyurl plugins.
+- Vortops postbox now rendered by `TIMU_Suite_Settings::render_vortops_postbox()`.
+- `TIMU_Suite_Event::record()` called after each conversion to log local vs. Vortops source.
+
+### Added
+- **Vortops AVIF cloud conversion is now wired** — when AVIF is selected but Imagick lacks libheif, and a Vortops key is stored, the plugin routes AVIF conversion through Vortops instead of falling back to WebP-only or erroring. The Settings postbox explains this and shows connection status.
+
 ## 1.6190.1610 — 2026-07-09
 
 ### Added

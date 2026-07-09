@@ -3,7 +3,7 @@
  * Plugin Name:       WEBP Support by Christopher Ross
  * Plugin URI:        https://thisismyurl.com/thisismyurl-webp-support/
  * Description:       Non-destructive WebP/AVIF conversion with backups, bulk processing, and one-click restoration.
- * Version:           1.6190.1610
+ * Version:           1.6190.1650
  * Author:            Christopher Ross
  * Author URI:        https://thisismyurl.com/
  * Requires at least: 6.0
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'TIMU_WEBP_VERSION' ) ) {
-    define( 'TIMU_WEBP_VERSION', '1.6190.1610' );
+    define( 'TIMU_WEBP_VERSION', '1.6190.1650' );
 }
 if ( ! defined( 'TIMU_WEBP_SUPPORT_DIR' ) ) {
     define( 'TIMU_WEBP_SUPPORT_DIR', plugin_dir_path( __FILE__ ) );
@@ -65,7 +65,7 @@ class TIMU_WEBP_Support {
         add_action( 'wp_ajax_timu_wsprocess_batch', array( __CLASS__, 'ajax_process_batch' ) );
         add_action( 'wp_ajax_timu_wsrestore_single', array( __CLASS__, 'ajax_restore_single' ) );
         add_action( 'admin_post_timu_webp_vortops_save', array( __CLASS__, 'handle_vortops_save' ) );
-        add_action( 'wp_ajax_timu_webp_vortops_test', array( __CLASS__, 'ajax_vortops_test_connection' ) );
+        TIMU_Suite_Settings::register_ajax_handlers();
         add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( __CLASS__, 'add_plugin_action_links' ) );
         add_filter( 'wp_get_attachment_image', array( __CLASS__, 'maybe_wrap_picture' ), 10, 5 );
 
@@ -1041,13 +1041,17 @@ class TIMU_WEBP_Support {
         $output_format = self::get_output_format();
         $wants_avif    = ( 'avif' === $output_format || 'both' === $output_format );
 
+        $use_vortops_avif = false;
         if ( $wants_avif && ! self::supports_avif() ) {
-            if ( 'avif' === $output_format ) {
-                return new WP_Error( 'avif_unsupported', __( 'AVIF output requested but Imagick is missing AVIF support on this server.', 'thisismyurl-webp-support' ) );
+            if ( TIMU_Vortops_Client::is_connected() ) {
+                $use_vortops_avif = true;
+            } elseif ( 'avif' === $output_format ) {
+                return new WP_Error( 'avif_unsupported', __( 'AVIF output requested but Imagick is missing AVIF support on this server. Connect a Vortops account in Settings to enable cloud AVIF conversion.', 'thisismyurl-webp-support' ) );
+            } else {
+                // 'both' mode — fall back to WebP-only when AVIF unavailable and no cloud.
+                $output_format = 'webp';
+                $wants_avif    = false;
             }
-            // Both -> fall back to WebP-only when AVIF isn't available.
-            $output_format = 'webp';
-            $wants_avif    = false;
         }
 
         $primary_ext  = $wants_avif ? 'avif' : 'webp';
@@ -1067,19 +1071,33 @@ class TIMU_WEBP_Support {
             $editor->set_quality( $quality );
         }
 
-        $saved = $editor->save( $new_path, $primary_mime );
-        if ( is_wp_error( $saved ) || ! $fs->exists( $new_path ) ) {
-            return new WP_Error(
-                'encode',
-                $wants_avif
-                    ? __( 'Failed to create AVIF file.', 'thisismyurl-webp-support' )
-                    : __( 'Failed to create WebP file.', 'thisismyurl-webp-support' )
-            );
+        $conversion_source = 'local';
+        if ( $use_vortops_avif ) {
+            $source_mime_type = (string) get_post_mime_type( $attachment_id );
+            $avif_blob = TIMU_Vortops_Client::convert( $full_path, $source_mime_type, 'avif' );
+            if ( is_wp_error( $avif_blob ) ) {
+                return new WP_Error( 'vortops_avif', $avif_blob->get_error_message() );
+            }
+            if ( false === file_put_contents( $new_path, $avif_blob ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_file_put_contents
+                return new WP_Error( 'write', __( 'Failed to write AVIF output file.', 'thisismyurl-webp-support' ) );
+            }
+            $conversion_source = 'vortops';
+        } else {
+            $saved = $editor->save( $new_path, $primary_mime );
+            if ( is_wp_error( $saved ) || ! $fs->exists( $new_path ) ) {
+                return new WP_Error(
+                    'encode',
+                    $wants_avif
+                        ? __( 'Failed to create AVIF file.', 'thisismyurl-webp-support' )
+                        : __( 'Failed to create WebP file.', 'thisismyurl-webp-support' )
+                );
+            }
         }
 
         // Extra safety net via the shared vault/shadow engine, layered on top of
         // this plugin's own per-file backup below. No-op when no engine is active.
         TIMU_WEBP_Backup_Adapter::snapshot( 'WebP optimize #' . $attachment_id, array( $full_path ) );
+        TIMU_Suite_Event::record( $attachment_id, 'convert', $primary_ext, $conversion_source, 'webp-support' );
 
         $backup_dir = self::get_backup_dir( $attachment_id );
         if ( ! wp_mkdir_p( $backup_dir ) ) {
@@ -1394,31 +1412,6 @@ class TIMU_WEBP_Support {
     }
 
     /**
-     * AJAX callback: test a Vortops API key connection.
-     *
-     * @return void
-     */
-    public static function ajax_vortops_test_connection() {
-        check_ajax_referer( self::AJAX_NONCE_ACTION, 'nonce' );
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( __( 'Unauthorized.', 'thisismyurl-webp-support' ) );
-        }
-        $api_key = isset( $_POST['api_key'] )
-            ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) )
-            : '';
-        if ( '' === $api_key ) {
-            wp_send_json_error( __( 'Please enter an API key first.', 'thisismyurl-webp-support' ) );
-        }
-        $result = TIMU_Vortops_Client::ping_with_key( $api_key );
-        if ( is_wp_error( $result ) ) {
-            wp_send_json_error( $result->get_error_message() );
-        }
-        wp_send_json_success( array(
-            'message' => __( 'Connected successfully. Save the settings to activate Vortops on this site.', 'thisismyurl-webp-support' ),
-        ) );
-    }
-
-    /**
      * Render the admin page.
      *
      * @return void
@@ -1476,9 +1469,8 @@ class TIMU_WEBP_Support {
                     'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
                     'nonce'      => wp_create_nonce( self::AJAX_NONCE_ACTION ),
                     'actions'    => array(
-                        'batch'       => 'timu_wsprocess_batch',
-                        'restore'     => 'timu_wsrestore_single',
-                        'vortopsTest' => 'timu_webp_vortops_test',
+                        'batch'   => 'timu_wsprocess_batch',
+                        'restore' => 'timu_wsrestore_single',
                     ),
                     'batchSize'  => self::get_batch_size_setting(),
                     'perPage'    => (int) $options['list_per_page'],
@@ -1905,52 +1897,18 @@ class TIMU_WEBP_Support {
                         </div>
 
                         <!-- Vortops cloud conversion settings -->
-                        <?php if ( isset( $_GET['vortops-saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-                        <div class="notice notice-success is-dismissible" style="margin:12px 0;"><p><?php esc_html_e( 'Vortops settings saved.', 'thisismyurl-webp-support' ); ?></p></div>
-                        <?php endif; ?>
-                        <div class="postbox" style="margin-top:12px;">
-                            <h2 class="hndle"><span><?php esc_html_e( 'Cloud Conversion (Vortops)', 'thisismyurl-webp-support' ); ?></span></h2>
-                            <div class="inside">
-                                <?php if ( self::supports_avif() ) : ?>
-                                <p><?php esc_html_e( 'Your server supports AVIF conversion locally. Vortops is optional — connect an account if you want a cloud backup path.', 'thisismyurl-webp-support' ); ?></p>
-                                <?php else : ?>
-                                <div class="notice notice-warning inline" style="padding:8px 12px;margin-bottom:12px;">
-                                    <p><?php esc_html_e( "Your server's Imagick is not compiled with AVIF support (libheif). This is a server-level limitation — this plugin does not restrict it. Connecting a Vortops account enables cloud AVIF conversion as a complete alternative.", 'thisismyurl-webp-support' ); ?></p>
-                                </div>
-                                <?php endif; ?>
-                                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                                    <input type="hidden" name="action" value="timu_webp_vortops_save" />
-                                    <?php wp_nonce_field( 'timu_webp_vortops_save', 'timu_webp_vortops_nonce' ); ?>
-                                    <table class="form-table" role="presentation">
-                                        <tr>
-                                            <th scope="row"><label for="timu_vortops_api_key_webp"><?php esc_html_e( 'API key', 'thisismyurl-webp-support' ); ?></label></th>
-                                            <td>
-                                                <input type="password"
-                                                       id="timu_vortops_api_key_webp"
-                                                       name="timu_vortops_api_key"
-                                                       value="<?php echo esc_attr( TIMU_Vortops_Client::get_api_key() ); ?>"
-                                                       class="regular-text"
-                                                       placeholder="<?php esc_attr_e( 'Paste your Vortops API key', 'thisismyurl-webp-support' ); ?>" />
-                                                <button type="button" id="btn-vortops-test-webp" class="button" style="margin-left:6px;">
-                                                    <?php esc_html_e( 'Test connection', 'thisismyurl-webp-support' ); ?>
-                                                </button>
-                                                <div id="vortops-test-result-webp" style="margin-top:6px;min-height:20px;"></div>
-                                                <p class="description">
-                                                    <?php
-                                                    printf(
-                                                        /* translators: %s: link to vortops.com */
-                                                        esc_html__( 'Get a free API key at %s. The key is shared across all thisismyurl plugins — connecting once covers all of them.', 'thisismyurl-webp-support' ),
-                                                        '<a href="https://vortops.com" target="_blank" rel="noopener noreferrer">vortops.com</a>'
-                                                    );
-                                                    ?>
-                                                </p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    <?php submit_button( __( 'Save Vortops settings', 'thisismyurl-webp-support' ), 'secondary' ); ?>
-                                </form>
-                            </div>
-                        </div>
+                        <?php TIMU_Suite_Settings::render_vortops_postbox( array(
+                            'save_action'     => 'timu_webp_vortops_save',
+                            'nonce_action'    => 'timu_webp_vortops_save',
+                            'nonce_name'      => 'timu_webp_vortops_nonce',
+                            'redirect_page'   => 'webp-optimizer',
+                            'field_id'        => 'timu_vortops_api_key_webp',
+                            'btn_id'          => 'btn-vortops-test-webp',
+                            'result_id'       => 'vortops-test-result-webp',
+                            'local_available' => self::supports_avif(),
+                            'local_ok_msg'    => __( 'Your server supports AVIF conversion locally. Vortops is optional — connect an account for a cloud backup path.', 'thisismyurl-webp-support' ),
+                            'gap_msg'         => __( "Your server's Imagick is not compiled with AVIF support (libheif). This is a server-level limitation — this plugin does not restrict it. Connecting a Vortops account enables cloud AVIF conversion as a complete alternative.", 'thisismyurl-webp-support' ),
+                        ) ); ?>
 
                     </div><!-- #post-body-content -->
                 </div><!-- #post-body -->
@@ -2133,7 +2091,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-backup-adapter.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/abilities.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-timu-vortops-client.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-timu-suite-core.php';
 
 register_activation_hook( __FILE__, array( 'TIMU_WEBP_Support', 'activate_plugin' ) );
 register_deactivation_hook( __FILE__, array( 'TIMU_WEBP_Support', 'deactivate_plugin' ) );
