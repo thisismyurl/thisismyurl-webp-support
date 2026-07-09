@@ -5,6 +5,11 @@ All notable changes to **WEBP Support by thisismyurl.com** are documented here.
 The version scheme is `x.Yddd` — `x` = release class (`0` = pre-release, `1` = full),
 `Y` = last digit of the year, `ddd` = Julian day. So `0.6123` = 2026 Julian day 123.
 
+## 1.6190.1540 — 2026-07-09
+
+### Changed
+- UX consistency pass: "Donate" links updated to "Sponsor" to match GitHub Sponsors; sentence-case applied to changelog date ranges.
+
 ## 1.6143 — 2026-05-23
 
 ### Changed

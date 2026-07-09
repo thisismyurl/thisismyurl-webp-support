@@ -5,7 +5,7 @@ Tags: webp, avif, images, media, optimization
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 1.6165.0822
+Stable tag: 1.6190.1540
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -94,6 +94,9 @@ Yes. `wp webp convert <id|--all>`, `wp webp restore <id|--all>`, `wp webp status
 * French (Canada) — Christopher Ross
 
 == Changelog ==
+
+= 1.6190.1540 =
+* **Hygiene:** UX consistency pass — "Donate" links updated to "Sponsor" to match GitHub Sponsors; sentence-case applied to changelog date ranges.
 
 = 1.6165.0822 =
 * New tabbed Optimize / Settings / Report admin screen, matching the rest of the thisismyurl.com image-plugin family.
